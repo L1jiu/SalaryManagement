@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>企业工资管理系统 - 职位信息管理</title>
+  <link rel="stylesheet" href="{% static 'bootstrap5/bootstrap.min.css' %}">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="{% static 'bootstrap5/popper.min.js' %}"></script>
+  <script src="{% static 'bootstrap5/bootstrap.min.js' %}"></script>
+</head>
+<body>
+  <header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom">
+    <div class="col-md-3 mb-2 mb-md-0">
+      <a href="/" class="d-inline-flex link-body-emphasis text-decoration-none">
+        <span style="margin-left: 10px;">企业工资管理系统</span>
+      </a>
+    </div>
+
+    <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+      <li><a href="{% url 'basicinfor:employee_management' %}" class="nav-link px-2 link-secondary">员工信息管理</a></li>
+      <li><a href="{% url 'basicinfor:position_management' %}" class="nav-link px-2 link-secondary">职位信息管理</a></li>
+    </ul>
+  </header>
+
+  <!-- 主要内容区 -->
+  <main class="container mt-5">
+    <h1 class="mb-4">职位信息管理</h1>
+    
+    <!-- Add Position Modal -->
+    <button type="button" class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#addPositionModal">
+      Add Position
+    </button>
+
+    {% if positions %}
+    <table class="table table-striped mt-4">
+      <thead>
+        <tr>
+          <th>Position Name</th>
+          <th>Base Salary</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for position in positions %}
+        <tr data-positionname="{{ position.positionname }}">
+          <td><input type="text" name="positionname" value="{{ position.positionname }}" class="form-control" readonly></td>
+          <td><input type="text" name="basesalary" value="{{ position.basesalary }}" class="form-control"></td>
+          <td>
+            <button class="edit-btn btn btn-sm btn-primary">Save</button>
+            <button class="delete-btn btn btn-sm btn-danger">Delete</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No positions available.</p>
+    {% endif %}
+  </main>
+
+  <!-- Add Position Modal -->
+  <div class="modal fade" id="addPositionModal" tabindex="-1" aria-labelledby="addPositionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addPositionModalLabel">Add New Position</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="add-position-form" method="POST">
+          {% csrf_token %}
+          <div class="modal-body">
+            <input type="text" name="positionname" placeholder="Position Name" class="form-control mb-2" required>
+            <input type="text" name="basesalary" placeholder="Base Salary" class="form-control mb-2" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-success">Add Position</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function(){
+      // Edit position
+      $('.edit-btn').click(function(e){
+        e.preventDefault();
+        var row = $(this).closest('tr');
+        var formData = {
+          'positionname': row.data('positionname'),
+          'basesalary': row.find('[name="basesalary"]').val(),
+          'csrfmiddlewaretoken': '{{ csrf_token }}'
+        };
+
+        $.ajax({
+          url: '{% url "basicinfor:position_management" %}',
+          type: 'POST',
+          data: formData,
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+          success: function(response) {
+            if (response.status === 'success') {
+              alert('Position updated successfully!');
+            } else {
+              alert('Error updating position: ' + JSON.stringify(response.errors));
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            alert('An error occurred while trying to update the position.');
+          }
+        });
+      });
+
+      // Delete position
+      $('.delete-btn').click(function(e){
+        e.preventDefault();
+        var row = $(this).closest('tr');
+        var confirmDelete = confirm("Are you sure you want to delete this position?");
+        
+        if (confirmDelete) {
+          $.ajax({
+            url: '{% url "basicinfor:position_management" %}',
+            type: 'POST',
+            data: {
+              'action': 'delete', // 新增字段，用于标识这是删除操作
+              'positionname': row.data('positionname'),
+              'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            success: function(response) {
+              if (response.status === 'success') {
+                row.remove(); // Remove row from DOM
+                alert('Position deleted successfully!');
+              } else {
+                alert('Error deleting position: ' + JSON.stringify(response.errors));
+              }
+            },
+            error: function(xhr, status, error) {
+              console.error("AJAX Error:", status, error);
+              alert('An error occurred while trying to delete the position.');
+            }
+          });
+        }
+      });
+
+      // Add position via modal
+      $('#add-position-form').submit(function(e){
+        e.preventDefault();
+        var formData = $(this).serialize();
+
+        $.ajax({
+          url: '{% url "basicinfor:position_management" %}',
+          type: 'POST',
+          data: formData,
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+          success: function(response) {
+            if (response.status === 'success') {
+              location.reload(); // Reload page to see new position added
+              $('#addPositionModal').modal('hide'); // Close the modal after successful add
+            } else {
+              alert('Error adding position: ' + JSON.stringify(response.errors));
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            alert('An error occurred while trying to add the position.');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

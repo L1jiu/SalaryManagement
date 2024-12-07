@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>企业工资管理系统 - 员工信息管理</title>
+  <link rel="stylesheet" href="{% static 'bootstrap5/bootstrap.min.css' %}">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="{% static 'bootstrap5/popper.min.js' %}"></script>
+  <script src="{% static 'bootstrap5/bootstrap.min.js' %}"></script>
+</head>
+<body>
+  <header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom">
+    <div class="col-md-3 mb-2 mb-md-0">
+      <a href="/" class="d-inline-flex link-body-emphasis text-decoration-none">
+        <span style="margin-left: 10px;">企业工资管理系统</span>
+      </a>
+    </div>
+
+    <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+      <li><a href="{% url 'basicinfor:employee_management' %}" class="nav-link px-2 link-secondary">员工信息管理</a></li>
+      <li><a href="{% url 'basicinfor:position_management' %}" class="nav-link px-2 link-secondary">职位信息管理</a></li>
+    </ul>
+  </header>
+
+  <!-- 主要内容区 -->
+  <main class="container mt-5">
+    <h1 class="mb-4">员工信息管理</h1>
+    
+    <!-- Add Employee Modal -->
+    <button type="button" class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+      Add Employee
+    </button>
+
+    {% if employees %}
+    <table class="table table-striped mt-4">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Gender</th>
+          <th>Phone Number</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for employee in employees %}
+        <tr data-id="{{ employee.employeeid }}">
+          <td>{{ employee.employeeid }}</td>
+          <td><input type="text" name="name" value="{{ employee.name }}" class="form-control"></td>
+          <td><input type="text" name="gender" value="{{ employee.gender }}" class="form-control"></td>
+          <td><input type="text" name="phonenumber" value="{{ employee.phonenumber }}" class="form-control"></td>
+          <td>
+            <button class="edit-btn btn btn-sm btn-primary">Save</button>
+            <button class="delete-btn btn btn-sm btn-danger">Delete</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No employees available.</p>
+    {% endif %}
+  </main>
+
+  <!-- Add Employee Modal -->
+  <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addEmployeeModalLabel">Add New Employee</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="add-employee-form" method="POST">
+          {% csrf_token %}
+          <div class="modal-body">
+            <input type="text" name="name" placeholder="Name" class="form-control mb-2" required>
+            <input type="text" name="gender" placeholder="Gender" class="form-control mb-2" required>
+            <input type="text" name="phonenumber" placeholder="Phone Number" class="form-control mb-2" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-success">Add Employee</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function(){
+      // Edit employee
+      $('.edit-btn').click(function(e){
+        e.preventDefault();
+        var row = $(this).closest('tr');
+        var formData = {
+          'employeeid': row.data('id'),
+          'name': row.find('[name="name"]').val(),
+          'gender': row.find('[name="gender"]').val(),
+          'phonenumber': row.find('[name="phonenumber"]').val(),
+          'csrfmiddlewaretoken': '{{ csrf_token }}'
+        };
+
+        $.ajax({
+          url: '{% url "basicinfor:employee_management" %}',
+          type: 'POST',
+          data: formData,
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+          success: function(response) {
+            if (response.status === 'success') {
+              alert('Employee updated successfully!');
+            } else {
+              alert('Error updating employee: ' + JSON.stringify(response.errors));
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            alert('An error occurred while trying to update the employee.');
+          }
+        });
+      });
+
+      // Delete employee
+      $('.delete-btn').click(function(e){
+        e.preventDefault();
+        var row = $(this).closest('tr');
+        var confirmDelete = confirm("Are you sure you want to delete this employee?");
+        
+        if (confirmDelete) {
+          $.ajax({
+            url: '{% url "basicinfor:employee_management" %}',
+            type: 'POST',
+            data: {
+              'action': 'delete', // 新增字段，用于标识这是删除操作
+              'employeeid': row.data('id'),
+              'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            success: function(response) {
+              if (response.status === 'success') {
+                row.remove(); // Remove row from DOM
+                alert('Employee deleted successfully!');
+              } else {
+                alert('Error deleting employee: ' + JSON.stringify(response.errors));
+              }
+            },
+            error: function(xhr, status, error) {
+              console.error("AJAX Error:", status, error);
+              alert('An error occurred while trying to delete the employee.');
+            }
+          });
+        }
+      });
+
+      // Add employee via modal
+      $('#add-employee-form').submit(function(e){
+        e.preventDefault();
+        var formData = $(this).serialize();
+
+        $.ajax({
+          url: '{% url "basicinfor:employee_management" %}',
+          type: 'POST',
+          data: formData,
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+          success: function(response) {
+            if (response.status === 'success') {
+              location.reload(); // Reload page to see new employee added
+              $('#addEmployeeModal').modal('hide'); // Close the modal after successful add
+            } else {
+              alert('Error adding employee: ' + JSON.stringify(response.errors));
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            alert('An error occurred while trying to add the employee.');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
