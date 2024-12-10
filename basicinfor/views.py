@@ -174,7 +174,27 @@ def employee_position_management(request):
             logger.error(f"An error occurred during employee position management: {e}")
             return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
 
+
     else:  # GET request
+
         employees = Employeetable.objects.all()
-        context = {'employees': employees, 'form': EmployeePositionForm(), 'view_type': 'positions'}
+
+        employee_positions = Employeepositiontable.objects.all()  # 查询所有员工职位关联记录
+
+        positions = Positiontable.objects.all()  # 获取所有职位
+
+        context = {
+
+            'employees': employees,
+
+            'employee_positions': employee_positions,
+
+            'positions': positions,  # 包含所有职位
+
+            'form': EmployeePositionForm(),
+
+            'view_type': 'positions'
+
+        }
+
         return render(request, 'employee_position_management.html', context)
