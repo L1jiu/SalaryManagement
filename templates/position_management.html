@@ -5,146 +5,190 @@
   <title>企业工资管理系统 - 职位信息管理</title>
   <link rel="stylesheet" href="{% static 'bootstrap5/bootstrap.min.css' %}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="{% static 'bootstrap5/popper.min.js' %}"></script>
-  <script src="{% static 'bootstrap5/bootstrap.min.js' %}"></script>
+  <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
 </head>
 <body>
-  <header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom">
-    <div class="col-md-3 mb-2 mb-md-0">
-      <a href="/" class="d-inline-flex link-body-emphasis text-decoration-none">
-        <span style="margin-left: 10px;">企业工资管理系统</span>
-      </a>
+  <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a href="/" class="navbar-brand">企业工资管理系统</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:employee_management' %}" class="nav-link {% if view_type == 'employees' %}active{% endif %}">员工信息管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:position_management' %}" class="nav-link {% if view_type == 'positions' %}active{% endif %}">职位信息管理</a>
+          </li>
+        </ul>
+      </div>
     </div>
-
-    <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-      <li><a href="{% url 'basicinfor:employee_management' %}" class="nav-link px-2 link-secondary">员工信息管理</a></li>
-      <li><a href="{% url 'basicinfor:position_management' %}" class="nav-link px-2 link-secondary">职位信息管理</a></li>
-    </ul>
   </header>
 
   <!-- 主要内容区 -->
   <main class="container mt-5">
     <h1 class="mb-4">职位信息管理</h1>
     
-    <!-- Add Position Modal -->
+    <!-- 添加职位按钮 -->
     <button type="button" class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#addPositionModal">
-      Add Position
+      添加职位
     </button>
 
     {% if positions %}
-    <table class="table table-striped mt-4">
-      <thead>
-        <tr>
-          <th>Position Name</th>
-          <th>Base Salary</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for position in positions %}
-        <tr data-positionname="{{ position.positionname }}">
-          <td><input type="text" name="positionname" value="{{ position.positionname }}" class="form-control" readonly></td>
-          <td><input type="text" name="basesalary" value="{{ position.basesalary }}" class="form-control"></td>
-          <td>
-            <button class="edit-btn btn btn-sm btn-primary">Save</button>
-            <button class="delete-btn btn btn-sm btn-danger">Delete</button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <form id="positionForm">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th scope="col">职位名称</th>
+              <th scope="col">基本工资</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for position in positions %}
+            <tr data-positionname="{{ position.positionname }}">
+              <td class="editable-cell">{{ position.positionname }}</td>
+              <td>{{ position.basesalary }}</td>
+              <td>
+                <button type="button" class="edit-btn btn btn-sm btn-primary">编辑</button>
+                <button type="button" class="delete-btn btn btn-sm btn-danger">删除</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
     {% else %}
-    <p>No positions available.</p>
+    <p class="text-center">没有可用的职位信息。</p>
     {% endif %}
   </main>
 
-  <!-- Add Position Modal -->
+  <!-- 添加新职位模态框 -->
   <div class="modal fade" id="addPositionModal" tabindex="-1" aria-labelledby="addPositionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="addPositionModalLabel">Add New Position</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="addPositionModalLabel">添加新职位</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
         </div>
         <form id="add-position-form" method="POST">
           {% csrf_token %}
           <div class="modal-body">
-            <input type="text" name="positionname" placeholder="Position Name" class="form-control mb-2" required>
-            <input type="text" name="basesalary" placeholder="Base Salary" class="form-control mb-2" required>
+            <div class="mb-3">
+              <label for="positionname" class="form-label">职位名称</label>
+              <input type="text" name="positionname" id="positionname" class="form-control" placeholder="请输入职位名称" required>
+            </div>
+            <div class="mb-3">
+              <label for="basesalary" class="form-label">基本工资</label>
+              <input type="number" name="basesalary" id="basesalary" class="form-control" placeholder="请输入基本工资" required>
+            </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-success">Add Position</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            <button type="submit" class="btn btn-success">添加职位</button>
           </div>
         </form>
       </div>
     </div>
   </div>
-
+  
   <script>
     $(document).ready(function(){
-      // Edit position
-      $('.edit-btn').click(function(e){
-        e.preventDefault();
-        var row = $(this).closest('tr');
-        var formData = {
-          'positionname': row.data('positionname'),
-          'basesalary': row.find('[name="basesalary"]').val(),
-          'csrfmiddlewaretoken': '{{ csrf_token }}'
-        };
-
-        $.ajax({
-          url: '{% url "basicinfor:position_management" %}',
-          type: 'POST',
-          data: formData,
-          headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-          success: function(response) {
-            if (response.status === 'success') {
-              alert('Position updated successfully!');
-            } else {
-              alert('Error updating position: ' + JSON.stringify(response.errors));
-            }
-          },
-          error: function(xhr, status, error) {
-            console.error("AJAX Error:", status, error);
-            alert('An error occurred while trying to update the position.');
-          }
-        });
-      });
-
-      // Delete position
+      // 删除职位信息
       $('.delete-btn').click(function(e){
         e.preventDefault();
         var row = $(this).closest('tr');
-        var confirmDelete = confirm("Are you sure you want to delete this position?");
-        
+        var confirmDelete = confirm("确定要删除此职位吗？");
+
         if (confirmDelete) {
           $.ajax({
             url: '{% url "basicinfor:position_management" %}',
             type: 'POST',
             data: {
-              'action': 'delete', // 新增字段，用于标识这是删除操作
+              'action': 'delete', 
               'positionname': row.data('positionname'),
               'csrfmiddlewaretoken': '{{ csrf_token }}'
             },
             headers: { 'X-CSRFToken': '{{ csrf_token }}' },
             success: function(response) {
               if (response.status === 'success') {
-                row.remove(); // Remove row from DOM
-                alert('Position deleted successfully!');
+                row.remove(); 
+                alert('职位删除成功！');
               } else {
-                alert('Error deleting position: ' + JSON.stringify(response.errors));
+                alert('删除职位时出错：' + JSON.stringify(response.errors));
               }
             },
             error: function(xhr, status, error) {
               console.error("AJAX Error:", status, error);
-              alert('An error occurred while trying to delete the position.');
+              alert('删除职位时发生错误。');
             }
           });
         }
       });
 
-      // Add position via modal
+      // 编辑职位信息
+      $('.edit-btn').click(function() {
+        var row = $(this).closest('tr');
+        var originalName = row.find('.editable-cell').text();
+        var originalSalary = row.find('[scope="row"]').next().text();
+
+        row.find('.editable-cell').html('<input type="text" value="' + originalName + '" class="form-control edit-input"/>');
+        row.find('[scope="row"]').next().html('<input type="number" value="' + originalSalary + '" class="form-control edit-input"/>');
+
+        row.find('.edit-input').focus().blur(function(){
+          var newName = row.find('.editable-cell .edit-input').val();
+          var newSalary = row.find('[scope="row"]').next().find('.edit-input').val();
+          if (newName !== originalName || newSalary !== originalSalary) {
+            var formData = {
+              'positionname': row.data('positionname'),
+              'new_name': newName,
+              'new_salary': newSalary,
+              'csrfmiddlewaretoken': '{{ csrf_token }}'
+            };
+
+            $.ajax({
+              url: '{% url "basicinfor:position_management" %}',
+              type: 'POST',
+              data: formData,
+              headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+              success: function(response) {
+                if (response.status === 'success') {
+                  row.find('.editable-cell').text(newName);
+                  row.find('[scope="row"]').next().text(newSalary);
+                  alert('职位信息更新成功！');
+                } else {
+                  row.find('.editable-cell').text(originalName);
+                  row.find('[scope="row"]').next().text(originalSalary); // 恢复原始值
+                  alert('更新职位信息时出错：' + JSON.stringify(response.errors));
+                }
+              },
+              error: function(xhr, status, error) {
+                console.error("AJAX Error:", status, error);
+                row.find('.editable-cell').text(originalName);
+                row.find('[scope="row"]').next().text(originalSalary); // 恢复原始值
+                alert('更新职位信息时发生错误。');
+              }
+            });
+          } else {
+            row.find('.editable-cell').text(originalName);
+            row.find('[scope="row"]').next().text(originalSalary);
+          }
+        }).keydown(function(event){
+          if (event.which === 13) { // Enter键
+            $(this).blur();
+          } else if (event.which === 27) { // Esc键
+            row.find('.editable-cell').text(originalName);
+            row.find('[scope="row"]').next().text(originalSalary);
+            $(this).blur();
+          }
+        });
+      });
+
+      // 通过模态框添加职位
       $('#add-position-form').submit(function(e){
         e.preventDefault();
         var formData = $(this).serialize();
@@ -156,15 +200,15 @@
           headers: { 'X-CSRFToken': '{{ csrf_token }}' },
           success: function(response) {
             if (response.status === 'success') {
-              location.reload(); // Reload page to see new position added
-              $('#addPositionModal').modal('hide'); // Close the modal after successful add
+              location.reload(); 
+              $('#addPositionModal').modal('hide'); 
             } else {
-              alert('Error adding position: ' + JSON.stringify(response.errors));
+              alert('添加职位时出错：' + JSON.stringify(response.errors));
             }
           },
           error: function(xhr, status, error) {
             console.error("AJAX Error:", status, error);
-            alert('An error occurred while trying to add the position.');
+            alert('添加职位时发生错误。');
           }
         });
       });

@@ -11,7 +11,7 @@
   <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
     <div class="container-fluid">
       <a href="/" class="navbar-brand">企业工资管理系统</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
@@ -31,71 +31,72 @@
   <main class="container mt-5">
     <h1 class="mb-4">员工信息管理</h1>
     
-    <!-- Add Employee Modal Button -->
+    <!-- 添加员工按钮 -->
     <button type="button" class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-      Add Employee
+      添加员工
     </button>
 
     {% if employees %}
     <form id="employeeForm">
-      <table class="table table-striped mt-4">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Gender</th>
-            <th>Phone Number</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for employee in employees %}
-          <tr data-id="{{ employee.employeeid }}">
-            <td>{{ employee.employeeid }}</td>
-            <td><input type="text" name="name" value="{{ employee.name }}" class="form-control"></td>
-            <td><input type="text" name="gender" value="{{ employee.gender }}" class="form-control"></td>
-            <td><input type="text" name="phonenumber" value="{{ employee.phonenumber }}" class="form-control"></td>
-            <td>
-              <button type="button" class="edit-btn btn btn-sm btn-primary" data-id="{{ employee.employeeid }}">Save</button>
-              <button type="button" class="delete-btn btn btn-sm btn-danger" data-id="{{ employee.employeeid }}">Delete</button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">姓名</th>
+              <th scope="col">性别</th>
+              <th scope="col">电话号码</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for employee in employees %}
+            <tr data-id="{{ employee.employeeid }}">
+              <th scope="row">{{ employee.employeeid }}</th>
+              <td class="editable-cell">{{ employee.name }}</td>
+              <td class="editable-cell">{{ employee.gender }}</td>
+              <td class="editable-cell">{{ employee.phonenumber }}</td>
+              <td>
+                <button type="button" class="delete-btn btn btn-sm btn-danger">删除</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </form>
     {% else %}
-    <p>No employees available.</p>
+    <p class="text-center">没有可用的员工信息。</p>
     {% endif %}
   </main>
 
-  <!-- Add Employee Modal -->
+  <!-- 添加新员工模态框 -->
   <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="addEmployeeModalLabel">Add New Employee</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="addEmployeeModalLabel">添加新员工</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
         </div>
         <form id="add-employee-form" method="POST">
           {% csrf_token %}
           <div class="modal-body">
             <div class="mb-3">
-              <label for="name" class="form-label">Name</label>
-              <input type="text" name="name" id="name" class="form-control" required>
+              <label for="name" class="form-label">姓名</label>
+              <input type="text" name="name" id="name" class="form-control" placeholder="请输入员工姓名" required>
             </div>
             <div class="mb-3">
-              <label for="gender" class="form-label">Gender</label>
-              <input type="text" name="gender" id="gender" class="form-control" required>
+              <label for="gender" class="form-label">性别</label>
+              <input type="text" name="gender" id="gender" class="form-control" placeholder="请输入性别" required>
             </div>
             <div class="mb-3">
-              <label for="phonenumber" class="form-label">Phone Number</label>
-              <input type="text" name="phonenumber" id="phonenumber" class="form-control" required>
+              <label for="phonenumber" class="form-label">电话号码</label>
+              <input type="text" name="phonenumber" id="phonenumber" class="form-control" placeholder="请输入电话号码" required>
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-success">Add Employee</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            <button type="submit" class="btn btn-success">添加员工</button>
           </div>
         </form>
       </div>
@@ -104,70 +105,89 @@
   
   <script>
     $(document).ready(function(){
-      // Edit employee
-      $('.edit-btn').click(function(e){
-        e.preventDefault();
-        var row = $(this).closest('tr');
-        var formData = {
-          'employeeid': row.data('id'),
-          'name': row.find('[name="name"]').val(),
-          'gender': row.find('[name="gender"]').val(),
-          'phonenumber': row.find('[name="phonenumber"]').val(),
-          'csrfmiddlewaretoken': '{{ csrf_token }}'
-        };
-
-        $.ajax({
-          url: '{% url "basicinfor:employee_management" %}',
-          type: 'POST',
-          data: formData,
-          headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-          success: function(response) {
-            if (response.status === 'success') {
-              alert('Employee updated successfully!');
-            } else {
-              alert('Error updating employee: ' + JSON.stringify(response.errors));
-            }
-          },
-          error: function(xhr, status, error) {
-            console.error("AJAX Error:", status, error);
-            alert('An error occurred while trying to update the employee.');
-          }
-        });
-      });
-
-      // Delete employee
+      // 删除员工信息
       $('.delete-btn').click(function(e){
         e.preventDefault();
         var row = $(this).closest('tr');
-        var confirmDelete = confirm("Are you sure you want to delete this employee?");
+        var confirmDelete = confirm("确定要删除此员工吗？");
 
         if (confirmDelete) {
           $.ajax({
             url: '{% url "basicinfor:employee_management" %}',
             type: 'POST',
             data: {
-              'action': 'delete', // 新增字段，用于标识这是删除操作
+              'action': 'delete', 
               'employeeid': row.data('id'),
               'csrfmiddlewaretoken': '{{ csrf_token }}'
             },
             headers: { 'X-CSRFToken': '{{ csrf_token }}' },
             success: function(response) {
               if (response.status === 'success') {
-                row.remove(); // Remove row from DOM
-                alert('Employee deleted successfully!');
+                row.remove(); 
+                alert('员工删除成功！');
               } else {
-                alert('Error deleting employee: ' + JSON.stringify(response.errors));
+                alert('删除员工时出错：' + JSON.stringify(response.errors));
               }
             },
             error: function(xhr, status, error) {
               console.error("AJAX Error:", status, error);
-              alert('An error occurred while trying to delete the employee.');
+              alert('删除员工时发生错误。');
             }
           });
         }
       });
 
-      // Add employee via modal
+      // 双击编辑功能
+      $('.editable-cell').dblclick(function() {
+        var td = $(this);
+        var originalContent = td.text();
+        
+        td.html('<input type="text" value="' + originalContent + '" class="form-control edit-input"/>');
+        td.find('.edit-input').focus().blur(function(){
+          var newContent = $(this).val();
+          if (newContent !== originalContent) {
+            var row = td.closest('tr');
+            var formData = {
+              'employeeid': row.data('id'),
+              'field': td.index(),
+              'value': newContent,
+              'csrfmiddlewaretoken': '{{ csrf_token }}'
+            };
+
+            $.ajax({
+              url: '{% url "basicinfor:employee_management" %}',
+              type: 'POST',
+              data: formData,
+              headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+              success: function(response) {
+                if (response.status === 'success') {
+                  td.text(newContent);
+                  alert('员工信息更新成功！');
+                } else {
+                  td.text(originalContent); // 恢复原始值
+                  alert('更新员工信息时出错：' + JSON.stringify(response.errors));
+                }
+              },
+              error: function(xhr, status, error) {
+                console.error("AJAX Error:", status, error);
+                td.text(originalContent); // 恢复原始值
+                alert('更新员工信息时发生错误。');
+              }
+            });
+          } else {
+            td.text(originalContent);
+          }
+        }).keydown(function(event){
+          if (event.which === 13) { // Enter键
+            $(this).blur();
+          } else if (event.which === 27) { // Esc键
+            td.text(originalContent);
+            $(this).blur();
+          }
+        });
+      });
+
+      // 通过模态框添加员工
       $('#add-employee-form').submit(function(e){
         e.preventDefault();
         var formData = $(this).serialize();
@@ -179,15 +199,15 @@
           headers: { 'X-CSRFToken': '{{ csrf_token }}' },
           success: function(response) {
             if (response.status === 'success') {
-              location.reload(); // Reload page to see new employee added
-              $('#addEmployeeModal').modal('hide'); // Close the modal after successful add
+              location.reload(); 
+              $('#addEmployeeModal').modal('hide'); 
             } else {
-              alert('Error adding employee: ' + JSON.stringify(response.errors));
+              alert('添加员工时出错：' + JSON.stringify(response.errors));
             }
           },
           error: function(xhr, status, error) {
             console.error("AJAX Error:", status, error);
-            alert('An error occurred while trying to add the employee.');
+            alert('添加员工时发生错误。');
           }
         });
       });
