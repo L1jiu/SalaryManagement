@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>企业工资管理系统 - 员工信息管理</title>
+  <!-- Bootstrap CSS -->
+  <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+  <style>
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #333;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      opacity: 1;
+      transition: opacity 0.5s ease-in-out;
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+</head>
+<body>
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+  <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a href="/" class="navbar-brand">企业工资管理系统</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:employee_management' %}" class="nav-link {% if view_type == 'employees' %}active{% endif %}">员工信息管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:position_management' %}" class="nav-link {% if view_type == 'positions' %}active{% endif %}">职位信息管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:employee_position_management' %}" class="nav-link active">员工职位管理</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要内容区 -->
+  <main class="container mt-5">
+    <h1 class="mb-4">员工信息管理</h1>
+    <button id="addEmployeeButton" class="btn btn-primary mb-3">添加新员工</button>
+    <form id="employeeForm" data-action="manage">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">姓名</th>
+              <th scope="col">性别</th>
+              <th scope="col">电话号码</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if employees %}
+              {% for employee in employees %}
+                <tr data-id="{{ employee.employeeid }}">
+                  <th scope="row">{{ employee.employeeid }}</th>
+                  <td class="editable-cell">{{ employee.name }}</td>
+                  <td class="editable-cell">{{ employee.gender }}</td>
+                  <td class="editable-cell">{{ employee.phonenumber }}</td>
+                  <td>
+                    <button type="button" class="delete-btn btn btn-sm btn-danger">删除</button>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <p class="text-center">没有可用的员工信息。</p>
+            {% endif %}
+            <tr id="add-new-row" style="display:none;">
+              <th scope="row"></th>
+              <td><input type="text" class="form-control new-input" name="name" /></td>
+              <td><input type="text" class="form-control new-input" name="gender" /></td> 
+              <td><input type="tel" class="form-control new-input" name="phonenumber" /></td>
+              <td>
+                <button type="button" class="save-new-row btn btn-sm btn-success">保存</button>
+                <button type="button" class="cancel-new-row btn btn-sm btn-secondary">取消</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      document.getElementById('addEmployeeButton').addEventListener('click', function() {
+        document.getElementById('add-new-row').style.display = 'table-row';
+      });
+
+      // 保存新员工记录
+      document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('save-new-row')) {
+          const row = e.target.closest('tr');
+          const inputs = row.querySelectorAll('.new-input');
+          const data = new URLSearchParams();
+          data.append('action', 'add'); // 指定操作类型为添加
+          data.append('csrfmiddlewaretoken', csrfToken); // 包含CSRF令牌
+
+          inputs.forEach(input => {
+            if (input.value.trim()) { // 确保只添加非空值
+              data.append(input.name, input.value.trim());
+            }
+          });
+
+          fetch('{% url "basicinfor:employee_management" %}', {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': csrfToken
+            },
+            body: data
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              // 更新表格并隐藏添加行
+              row.style.display = 'none';
+              location.reload(); // 刷新页面以获取最新数据
+              showNotification('新员工添加成功！');
+            } else {
+              showNotification('添加新员工时出错：' + JSON.stringify(data.errors));
+            }
+          })
+          .catch(error => {
+            console.error("AJAX Error:", error);
+            showNotification('添加新员工时发生错误。');
+          });
+        }
+      });
+
+      // 删除员工信息
+      document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('delete-btn')) {
+          const button = e.target;
+          var row = button.closest('tr');
+          var confirmDelete = confirm("确定要删除此员工吗？");
+
+          if (confirmDelete) {
+            fetch('{% url "basicinfor:employee_management" %}', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
+              },
+              body: new URLSearchParams({
+                'action': 'delete',
+                'employeeid': row.getAttribute('data-id'),
+                'csrfmiddlewaretoken': csrfToken
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.status === 'success') {
+                row.remove();
+                showNotification('删除成功！');
+              } else {
+                showNotification('删除员工时出错：' + JSON.stringify(data.errors));
+              }
+            })
+            .catch(error => {
+              console.error("AJAX Error:", error);
+              showNotification('删除员工时发生错误。');
+            });
+          }
+        }
+      });
+
+      // 双击编辑功能
+      document.addEventListener('dblclick', function(e) {
+        if (e.target && e.target.classList.contains('editable-cell')) {
+          const cell = e.target;
+          const originalText = cell.textContent;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.classList.add('form-control');
+          input.value = originalText;
+          cell.innerHTML = '';
+          cell.appendChild(input);
+
+          input.addEventListener('blur', function() {
+            const updatedValue = input.value.trim();
+            if (updatedValue !== originalText) {
+              const row = cell.closest('tr');
+              const data = new URLSearchParams();
+              data.append('action', 'edit');
+              data.append('employeeid', row.getAttribute('data-id'));
+              data.append('field', cell.dataset.field); // Assuming data-field exists to identify the column
+              data.append('new_value', updatedValue);
+              data.append('csrfmiddlewaretoken', csrfToken);
+
+              fetch('{% url "basicinfor:employee_management" %}', {
+                method: 'POST',
+                headers: {
+                  'X-CSRFToken': csrfToken
+                },
+                body: data
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.status === 'success') {
+                  cell.innerHTML = updatedValue;
+                  showNotification('更新成功！');
+                } else {
+                  showNotification('更新失败：' + JSON.stringify(data.errors));
+                }
+              })
+              .catch(error => {
+                console.error("AJAX Error:", error);
+                showNotification('更新员工信息时发生错误。');
+              });
+            } else {
+              cell.innerHTML = originalText; // Restore the original text if no change
+            }
+          });
+        }
+      });
+
+      function showNotification(message) {
+        const toast = document.createElement('div');
+        toast.classList.add('toast');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(function() {
+          toast.style.opacity = '0';
+          setTimeout(function() {
+            toast.remove();
+          }, 500); // Delay removal for fade-out effect
+        }, 3000);
+      }
+    });
+  </script>
+</body>
+</html>
