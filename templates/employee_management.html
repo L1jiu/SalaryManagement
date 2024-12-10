@@ -5,58 +5,65 @@
   <title>企业工资管理系统 - 员工信息管理</title>
   <link rel="stylesheet" href="{% static 'bootstrap5/bootstrap.min.css' %}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="{% static 'bootstrap5/popper.min.js' %}"></script>
-  <script src="{% static 'bootstrap5/bootstrap.min.js' %}"></script>
+  <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
 </head>
 <body>
-  <header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom">
-    <div class="col-md-3 mb-2 mb-md-0">
-      <a href="/" class="d-inline-flex link-body-emphasis text-decoration-none">
-        <span style="margin-left: 10px;">企业工资管理系统</span>
-      </a>
+  <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a href="/" class="navbar-brand">企业工资管理系统</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:employee_management' %}" class="nav-link {% if view_type == 'employees' %}active{% endif %}">员工信息管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:position_management' %}" class="nav-link {% if view_type == 'positions' %}active{% endif %}">职位信息管理</a>
+          </li>
+        </ul>
+      </div>
     </div>
-
-    <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-      <li><a href="{% url 'basicinfor:employee_management' %}" class="nav-link px-2 link-secondary">员工信息管理</a></li>
-      <li><a href="{% url 'basicinfor:position_management' %}" class="nav-link px-2 link-secondary">职位信息管理</a></li>
-    </ul>
   </header>
 
   <!-- 主要内容区 -->
   <main class="container mt-5">
     <h1 class="mb-4">员工信息管理</h1>
     
-    <!-- Add Employee Modal -->
+    <!-- Add Employee Modal Button -->
     <button type="button" class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
       Add Employee
     </button>
 
     {% if employees %}
-    <table class="table table-striped mt-4">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Gender</th>
-          <th>Phone Number</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for employee in employees %}
-        <tr data-id="{{ employee.employeeid }}">
-          <td>{{ employee.employeeid }}</td>
-          <td><input type="text" name="name" value="{{ employee.name }}" class="form-control"></td>
-          <td><input type="text" name="gender" value="{{ employee.gender }}" class="form-control"></td>
-          <td><input type="text" name="phonenumber" value="{{ employee.phonenumber }}" class="form-control"></td>
-          <td>
-            <button class="edit-btn btn btn-sm btn-primary">Save</button>
-            <button class="delete-btn btn btn-sm btn-danger">Delete</button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <form id="employeeForm">
+      <table class="table table-striped mt-4">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Phone Number</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for employee in employees %}
+          <tr data-id="{{ employee.employeeid }}">
+            <td>{{ employee.employeeid }}</td>
+            <td><input type="text" name="name" value="{{ employee.name }}" class="form-control"></td>
+            <td><input type="text" name="gender" value="{{ employee.gender }}" class="form-control"></td>
+            <td><input type="text" name="phonenumber" value="{{ employee.phonenumber }}" class="form-control"></td>
+            <td>
+              <button type="button" class="edit-btn btn btn-sm btn-primary" data-id="{{ employee.employeeid }}">Save</button>
+              <button type="button" class="delete-btn btn btn-sm btn-danger" data-id="{{ employee.employeeid }}">Delete</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
     {% else %}
     <p>No employees available.</p>
     {% endif %}
@@ -73,9 +80,18 @@
         <form id="add-employee-form" method="POST">
           {% csrf_token %}
           <div class="modal-body">
-            <input type="text" name="name" placeholder="Name" class="form-control mb-2" required>
-            <input type="text" name="gender" placeholder="Gender" class="form-control mb-2" required>
-            <input type="text" name="phonenumber" placeholder="Phone Number" class="form-control mb-2" required>
+            <div class="mb-3">
+              <label for="name" class="form-label">Name</label>
+              <input type="text" name="name" id="name" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="gender" class="form-label">Gender</label>
+              <input type="text" name="gender" id="gender" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="phonenumber" class="form-label">Phone Number</label>
+              <input type="text" name="phonenumber" id="phonenumber" class="form-control" required>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -85,7 +101,7 @@
       </div>
     </div>
   </div>
-
+  
   <script>
     $(document).ready(function(){
       // Edit employee
@@ -124,7 +140,7 @@
         e.preventDefault();
         var row = $(this).closest('tr');
         var confirmDelete = confirm("Are you sure you want to delete this employee?");
-        
+
         if (confirmDelete) {
           $.ajax({
             url: '{% url "basicinfor:employee_management" %}',
