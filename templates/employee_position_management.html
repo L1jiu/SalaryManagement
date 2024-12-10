@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>企业工资管理系统 - 员工职位管理</title>
+  <!-- Bootstrap CSS -->
+  <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+  <style>
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #333;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      opacity: 1;
+      transition: opacity 0.5s ease-in-out;
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+</head>
+<body>
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+  <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a href="/" class="navbar-brand">企业工资管理系统</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:employee_management' %}" class="nav-link {% if view_type == 'employees' %}active{% endif %}">员工信息管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:position_management' %}" class="nav-link {% if view_type == 'positions' %}active{% endif %}">职位信息管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'basicinfor:employee_position_management' %}" class="nav-link active">员工职位管理</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要内容区 -->
+  <main class="container mt-5">
+    <h1 class="mb-4">员工职位管理</h1>
+    <button id="addEmployeePositionButton" class="btn btn-primary mb-3">添加新关联</button>
+    <form id="employeePositionForm" data-action="manage">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">员工</th>
+              <th scope="col">职位</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if employee_positions %}
+              {% for ep in employee_positions %}
+                <tr data-id="{{ ep.employeeid.employeeid }}">
+                  <th scope="row">{{ ep.employeeid.employeeid }}</th>
+                  <td class="editable-cell">{{ ep.employeeid.name }}</td>
+                  <td class="editable-cell">{{ ep.positionname }}</td>
+                  <td>
+                    <button type="button" class="delete-btn btn btn-sm btn-danger">解除关联</button>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <p class="text-center">没有可用的员工职位关联。</p>
+            {% endif %}
+            <tr id="add-new-row" style="display:none;">
+              <th scope="row"></th>
+              <td><select class="form-control new-input" name="employeeid">
+                  {% for emp in employees %}
+                    <option value="{{ emp.employeeid }}">{{ emp.name }}</option>
+                  {% endfor %}
+                </select></td>
+              <td><select class="form-control new-input" name="positionname">
+                  {% for pos in positions %}
+                    <option value="{{ pos.positionname }}">{{ pos.positionname }}</option>
+                  {% endfor %}
+                </select></td>
+              <td>
+                <button type="button" class="save-new-row btn btn-sm btn-success">保存</button>
+                <button type="button" class="cancel-new-row btn btn-sm btn-secondary">取消</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const addBtn = document.getElementById('addEmployeePositionButton');
+      const addRow = document.getElementById('add-new-row');
+
+      addBtn.addEventListener('click', () => addRow.style.display = 'table-row');
+
+      // 添加新关联记录
+      document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('save-new-row')) {
+          const row = e.target.closest('tr');
+          const inputs = row.querySelectorAll('.new-input');
+          const data = new URLSearchParams();
+          data.append('action', 'add'); // 指定操作类型为添加
+          data.append('csrfmiddlewaretoken', csrfToken); // 包含CSRF令牌
+
+          inputs.forEach(input => {
+            if (input.value.trim()) { // 确保只添加非空值
+              data.append(input.name, input.value.trim());
+            }
+          });
+
+          fetch('{% url "basicinfor:employee_position_management" %}', {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': csrfToken
+            },
+            body: data
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              // 更新表格并隐藏添加行
+              row.style.display = 'none';
+              location.reload(); // 刷新页面以获取最新数据
+              showNotification('新关联添加成功！');
+            } else {
+              showNotification('添加新关联时出错：' + JSON.stringify(data.errors));
+            }
+          })
+          .catch(error => {
+            console.error("AJAX Error:", error);
+            showNotification('添加新关联时发生错误。');
+          });
+        }
+      });
+
+      // 删除关联信息
+      document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('delete-btn')) {
+          const button = e.target;
+          var row = button.closest('tr');
+          var confirmDelete = confirm("确定要解除此员工和职位的关联吗？");
+
+          if (confirmDelete) {
+            fetch('{% url "basicinfor:employee_position_management" %}', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
+              },
+              body: new URLSearchParams({
+                'action': 'delete',
+                'employeeid': row.getAttribute('data-id'),
+                'csrfmiddlewaretoken': csrfToken
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.status === 'success') {
+                row.remove();
+                showNotification('关联解除成功！');
+              } else {
+                showNotification('解除关联时出错：' + JSON.stringify(data.errors));
+              }
+            })
+            .catch(error => {
+              console.error("AJAX Error:", error);
+              showNotification('解除关联时发生错误。');
+            });
+          }
+        }
+      });
+
+      // 显示通知的方法
+      function showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'toast';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
+        }, 3000); // 3秒后自动关闭通知
+      }
+    });
+  </script>
+</body>
+</html>

@@ -19,3 +19,12 @@ class Positiontable(models.Model):
     class Meta:
         managed = False
         db_table = 'positiontable'
+
+class Employeepositiontable(models.Model):
+    employeeid = models.OneToOneField('Employeetable', models.DO_NOTHING, db_column='EmployeeID', primary_key=True)  # Field name made lowercase. The composite primary key (EmployeeID, PositionName) found, that is not supported. The first column is selected.
+    positionname = models.ForeignKey('Positiontable', models.DO_NOTHING, db_column='PositionName')  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'employeepositiontable'
+        unique_together = (('employeeid', 'positionname'),)
