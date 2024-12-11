@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>企业工资管理系统 - 员工信息管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考勤管理</title>
   <!-- Bootstrap CSS -->
   <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
   <style>
@@ -17,6 +18,27 @@
       opacity: 1;
       transition: opacity 0.5s ease-in-out;
     }
+
+    /* 添加文本框和背景色的统一样式 */
+    .form-control {
+      background-color: #f8f9fa;  /* 浅灰色背景 */
+      color: #495057;  /* 深灰色文本 */
+      border: 1px solid #ced4da;  /* 边框颜色 */
+    }
+
+    .form-control:focus {
+      background-color: #fff;  /* 聚焦时背景变白 */
+      border-color: #80bdff;  /* 聚焦时边框颜色 */
+      box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, 0.25);  /* 聚焦时的阴影 */
+    }
+
+    /* 标签背景黑色，文字白色 */
+    .form-label {
+      background-color: black;
+      color: white;
+      padding: 5px;
+      border-radius: 4px;
+    }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
@@ -24,132 +46,151 @@
 <body>
   <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
+  <!-- 导航栏 -->
   <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
     <div class="container-fluid">
-      <a href="/" class="navbar-brand">企业工资管理系统</a>
+      <a href="/" class="navbar-brand">企业工资管理系统 - 日常事务管理</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           <li class="nav-item">
-            <a href="{% url 'basicinfor:employee_management' %}" class="nav-link {% if view_type == 'employees' %}active{% endif %}">员工信息管理</a>
+            <a href="{% url 'attendance:attendance_management' %}" class="nav-link active">考勤管理</a>
           </li>
           <li class="nav-item">
-            <a href="{% url 'basicinfor:position_management' %}" class="nav-link {% if view_type == 'positions' %}active{% endif %}">职位信息管理</a>
-          </li>
-          <li class="nav-item">
-            <a href="{% url 'basicinfor:employee_position_management' %}" class="nav-link active">员工职位管理</a>
+            <a href="{% url 'attendance:performance_evaluation_management' %}" class="nav-link">绩效考核管理</a>
           </li>
         </ul>
       </div>
     </div>
   </header>
 
-  <!-- 主要内容区 -->
-  <main class="container mt-5">
-    <h1 class="mb-4">员工信息管理</h1>
-    <button id="addEmployeeButton" class="btn btn-primary mb-3">添加新员工</button>
-    <form id="employeeForm" data-action="manage">
-      <div class="table-responsive">
-        <table class="table table-striped table-hover">
-          <thead class="table-dark">
-            <tr>
-              <th scope="col">#</th>
-              <th scope="col">姓名</th>
-              <th scope="col">性别</th>
-              <th scope="col">电话号码</th>
-              <th scope="col">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if employees %}
-              {% for employee in employees %}
-                <tr data-id="{{ employee.employeeid }}">
-                  <th scope="row">{{ employee.employeeid }}</th>
-                  <td class="editable-cell">{{ employee.name }}</td>
-                  <td class="editable-cell">{{ employee.gender }}</td>
-                  <td class="editable-cell">{{ employee.phonenumber }}</td>
-                  <td>
-                    <button type="button" class="delete-btn btn btn-sm btn-danger">删除</button>
-                  </td>
-                </tr>
-              {% endfor %}
-            {% else %}
-              <p class="text-center">没有可用的员工信息。</p>
-            {% endif %}
-            <tr id="add-new-row" style="display:none;">
-              <th scope="row"></th>
-              <td><input type="text" class="form-control new-input" name="name" /></td>
-              <td><input type="text" class="form-control new-input" name="gender" /></td> 
-              <td><input type="tel" class="form-control new-input" name="phonenumber" /></td>
-              <td>
-                <button type="button" class="save-new-row btn btn-sm btn-success">保存</button>
-                <button type="button" class="cancel-new-row btn btn-sm btn-secondary">取消</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+  <!-- 页面内容 -->
+  <div class="container">
+    <h1>考勤管理</h1>
+
+    <!-- 添加考勤按钮 -->
+    <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addAttendanceModal">添加考勤记录</button>
+
+    <!-- 模态框 -->
+    <div class="modal fade" id="addAttendanceModal" tabindex="-1" aria-labelledby="addAttendanceModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addAttendanceModalLabel">添加考勤记录</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="addAttendanceForm">
+              <div class="mb-3">
+                <label for="employeeid" class="form-label">员工ID:</label>
+                <input type="text" class="form-control" id="employeeid" name="employeeid" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="date" class="form-label">日期:</label>
+                <input type="date" class="form-control" id="date" name="date" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="clockin_time" class="form-label">上班时间:</label>
+                <input type="time" class="form-control" id="clockin_time" name="clockin_time" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="clockout_time" class="form-label">下班时间:</label>
+                <input type="time" class="form-control" id="clockout_time" name="clockout_time" required>
+              </div>
+              <button type="submit" class="btn btn-primary">添加考勤记录</button>
+            </form>
+          </div>
+        </div>
       </div>
-    </form>
-  </main>
+    </div>
+
+    <hr>
+
+    <h2>考勤记录</h2>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>员工姓名</th>
+          <th>员工ID</th>
+          <th>日期</th>
+          <th>上班时间</th>
+          <th>下班时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for attendance in attendances %}
+        <tr data-id="{{ attendance.employeeid }}">
+          <td>{{ attendance.employeeid.name }}</td>
+          <td>{{ attendance.employeeid.employeeid }}</td>
+          <td>{{ attendance.date.date }}</td>
+          <td>{{ attendance.clockintime }}</td>
+          <td>{{ attendance.clockouttime }}</td>
+          <td>
+            <button type="button" class="delete-btn btn btn-sm btn-danger">删除</button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center">没有找到考勤记录。</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-      document.getElementById('addEmployeeButton').addEventListener('click', function() {
-        document.getElementById('add-new-row').style.display = 'table-row';
+
+      // 监听模态框表单的提交
+      document.getElementById('addAttendanceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const data = new URLSearchParams();
+        data.append('employeeid', document.getElementById('employeeid').value);
+        data.append('date', document.getElementById('date').value);
+        data.append('clockin_time', document.getElementById('clockin_time').value);
+        data.append('clockout_time', document.getElementById('clockout_time').value);
+        data.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch('{% url "attendance:attendance_management" %}', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken
+          },
+          body: data
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            $('#addAttendanceModal').modal('hide');  // 隐藏模态框
+            location.reload();  // 刷新页面以显示新的考勤记录
+            showNotification('考勤记录添加成功！');
+          } else {
+            showNotification('添加考勤记录时出错：' + JSON.stringify(data.errors));
+          }
+        })
+        .catch(error => {
+          console.error("AJAX Error:", error);
+          showNotification('添加考勤记录时发生错误。');
+        });
       });
 
-      // 保存新员工记录
-      document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('save-new-row')) {
-          const row = e.target.closest('tr');
-          const inputs = row.querySelectorAll('.new-input');
-          const data = new URLSearchParams();
-          data.append('action', 'add'); // 指定操作类型为添加
-          data.append('csrfmiddlewaretoken', csrfToken); // 包含CSRF令牌
-
-          inputs.forEach(input => {
-            if (input.value.trim()) { // 确保只添加非空值
-              data.append(input.name, input.value.trim());
-            }
-          });
-
-          fetch('{% url "basicinfor:employee_management" %}', {
-            method: 'POST',
-            headers: {
-              'X-CSRFToken': csrfToken
-            },
-            body: data
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              // 更新表格并隐藏添加行
-              row.style.display = 'none';
-              location.reload(); // 刷新页面以获取最新数据
-              showNotification('新员工添加成功！');
-            } else {
-              showNotification('添加新员工时出错：' + JSON.stringify(data.errors));
-            }
-          })
-          .catch(error => {
-            console.error("AJAX Error:", error);
-            showNotification('添加新员工时发生错误。');
-          });
-        }
-      });
-
-      // 删除员工信息
+      // 删除考勤记录
       document.addEventListener('click', function(e) {
         if (e.target && e.target.classList.contains('delete-btn')) {
           const button = e.target;
-          var row = button.closest('tr');
-          var confirmDelete = confirm("确定要删除此员工吗？");
+          const row = button.closest('tr');
+          const confirmDelete = confirm("确定要删除此考勤记录吗？");
 
           if (confirmDelete) {
-            fetch('{% url "basicinfor:employee_management" %}', {
+            fetch('{% url "attendance:attendance_management" %}', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -167,81 +208,29 @@
                 row.remove();
                 showNotification('删除成功！');
               } else {
-                showNotification('删除员工时出错：' + JSON.stringify(data.errors));
+                showNotification('删除考勤记录时出错：' + JSON.stringify(data.errors));
               }
             })
             .catch(error => {
               console.error("AJAX Error:", error);
-              showNotification('删除员工时发生错误。');
+              showNotification('删除考勤记录时发生错误。');
             });
           }
         }
       });
-
-      // 双击编辑功能
-      document.addEventListener('dblclick', function(e) {
-        if (e.target && e.target.classList.contains('editable-cell')) {
-          const cell = e.target;
-          const originalText = cell.textContent;
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.classList.add('form-control');
-          input.value = originalText;
-          cell.innerHTML = '';
-          cell.appendChild(input);
-
-          input.addEventListener('blur', function() {
-            const updatedValue = input.value.trim();
-            if (updatedValue !== originalText) {
-              const row = cell.closest('tr');
-              const data = new URLSearchParams();
-              data.append('action', 'edit');
-              data.append('employeeid', row.getAttribute('data-id'));
-              data.append('field', cell.dataset.field); // Assuming data-field exists to identify the column
-              data.append('new_value', updatedValue);
-              data.append('csrfmiddlewaretoken', csrfToken);
-
-              fetch('{% url "basicinfor:employee_management" %}', {
-                method: 'POST',
-                headers: {
-                  'X-CSRFToken': csrfToken
-                },
-                body: data
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.status === 'success') {
-                  cell.innerHTML = updatedValue;
-                  showNotification('更新成功！');
-                } else {
-                  showNotification('更新失败：' + JSON.stringify(data.errors));
-                }
-              })
-              .catch(error => {
-                console.error("AJAX Error:", error);
-                showNotification('更新员工信息时发生错误。');
-              });
-            } else {
-              cell.innerHTML = originalText; // Restore the original text if no change
-            }
-          });
-        }
-      });
-
-      function showNotification(message) {
-        const toast = document.createElement('div');
-        toast.classList.add('toast');
-        toast.textContent = message;
-        document.body.appendChild(toast);
-
-        setTimeout(function() {
-          toast.style.opacity = '0';
-          setTimeout(function() {
-            toast.remove();
-          }, 500); // Delay removal for fade-out effect
-        }, 3000);
-      }
     });
+
+    function showNotification(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = 0;
+        setTimeout(() => toast.remove(), 500);
+      }, 3000);
+    }
   </script>
 </body>
 </html>

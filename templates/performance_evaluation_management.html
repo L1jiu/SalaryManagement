@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绩效考核管理</title>
+    <!-- 引入 Bootstrap -->
+    <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+    <style>
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* 表头样式 */
+        table thead {
+            background-color: black !important;
+            color: white !important;
+        }
+
+        table thead th {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        /* 可编辑单元格样式 */
+        .editable-cell {
+            cursor: pointer;
+        }
+
+        /* 表格细节 */
+        table {
+            margin-top: 20px;
+        }
+
+        table td, table th {
+            vertical-align: middle;
+            text-align: center;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+</head>
+<body>
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    <!-- 导航栏 -->
+    <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <a href="/" class="navbar-brand">企业工资管理系统 - 日常事务管理</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a href="{% url 'attendance:attendance_management' %}" class="nav-link">考勤管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'attendance:performance_evaluation_management' %}" class="nav-link active">绩效考核管理</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- 页面内容 -->
+    <div class="container">
+        <h2>绩效考核管理</h2>
+
+        <!-- 显示绩效考核记录表格 -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>员工姓名</th>
+                    <th>员工ID</th>
+                    <th>指标名称</th>
+                    <th>得分</th>
+                    <th>考核日期</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if performance_records %}
+                    {% for record in performance_records %}
+                        <tr>
+                            <td>{{ record.employee_name }}</td>
+                            <td>{{ record.employeeid }}</td>
+                            <td>{{ record.indicatorname }}</td>
+                            <td>{{ record.score }}</td>
+                            <td>{{ record.evaluationdate }}</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">暂无数据</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

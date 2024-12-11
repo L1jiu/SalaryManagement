@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>员工奖金管理</title>
+    <!-- Bootstrap CSS -->
+    <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+    <script>
+        $(document).ready(function(){
+            // 发放奖金按钮点击事件
+            $(".grant-bonus-btn").click(function(){
+                var employeeid = $(this).data("employeeid");
+                var bonusid = $(this).data("bonusid");
+                var amount = $("#amount_" + employeeid).val();
+                var paymentdate = $("#paymentdate_" + employeeid).val();
+                var reason = $("#reason_" + employeeid).val();
+
+                // 发放奖金的POST请求
+                $.ajax({
+                    url: "{% url 'attendance:employee_bonus_management' %}",
+                    type: "POST",
+                    data: JSON.stringify({
+                        'employeeid': employeeid,
+                        'bonusid': bonusid,
+                        'amount': amount,
+                        'paymentdate': paymentdate,
+                        'reason': reason
+                    }),
+                    contentType: "application/json",
+                    success: function(response){
+                        alert(response.message);
+                    },
+                    error: function(xhr, status, error){
+                        alert("Error: " + error);
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>员工奖金管理</h1>
+
+        <!-- 奖金记录 -->
+        <h2>所有奖金记录</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>员工姓名</th>
+                    <th>员工ID</th>
+                    <th>奖金ID</th>
+                    <th>奖金金额</th>
+                    <th>发放日期</th>
+                    <th>理由</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in employees %}
+                <tr>
+                    <td>{{ employee.name }}</td>
+                    <td>{{ employee.employeeid }}</td>
+                    <td>
+                        <!-- 选择奖金ID -->
+                        <select id="bonusid_{{ employee.employeeid }}">
+                            {% for bonus in bonuses %}
+                                <option value="{{ bonus.bonusid }}">{{ bonus.bonusid }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" id="amount_{{ employee.employeeid }}" placeholder="奖金金额" required>
+                    </td>
+                    <td>
+                        <input type="date" id="paymentdate_{{ employee.employeeid }}" required>
+                    </td>
+                    <td>
+                        <input type="text" id="reason_{{ employee.employeeid }}" placeholder="发放理由" required>
+                    </td>
+                    <td>
+                        <!-- 发放奖金按钮 -->
+                        <button class="btn btn-primary grant-bonus-btn" 
+                                data-employeeid="{{ employee.employeeid }}"
+                                data-bonusid="{{ bonus.bonusid }}">发放奖金</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
