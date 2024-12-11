@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>员工详情</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        h1, h2 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        thead {
+            background-color: #333;
+            color: #fff;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+        }
+        .home-btn {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .home-btn:hover {
+            background-color: #0056b3;
+        }
+        .back-btn {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-btn:hover {
+            background-color: #111;
+        }
+    </style>
+</head>
+<body>
+    <div class="button-container">
+        <a href="http://localhost:8000/" class="home-btn">主页</a>
+        <a href="http://localhost:8000/sshftax/" class="back-btn">返回</a>
+    </div>
+    <h1>{{ employee.name }} 的详细信息</h1>
+    <h2>税务记录</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>税种</th>
+                <th>税额</th>
+                <th>缴纳日期</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in tax_records %}
+            <tr>
+                <td>{{ record.taxname }}</td>
+                <td>{{ record.taxamount }}</td>
+                <td>{{ record.paymentdate }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>社保和公积金记录</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>项目名称</th>
+                <th>应缴金额</th>
+                <th>缴纳日期</th>
+                <th>缴费比例</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in social_security_records %}
+            <tr>
+                <td>{{ record.projectname }}</td>
+                <td>{{ record.amountdue }}</td>
+                <td>{{ record.paymentdate }}</td>
+                <td>{{ record.contributionrate }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
