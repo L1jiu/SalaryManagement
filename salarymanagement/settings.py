@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'basicinfor',
     'sshftax',
-    'salary'
+    'salary',
+    'datemanage'
 ]
 
 MIDDLEWARE = [
