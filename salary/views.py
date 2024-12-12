@@ -3,5 +3,5 @@ from django.shortcuts import render
 
 # Create your views here.
 
-def salary(request):
+def grosssalary(request):
     return HttpResponse("这是工资统计分析页面")
