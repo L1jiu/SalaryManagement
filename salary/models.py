@@ -1,5 +1,5 @@
 from django.db import models
-
+_model_cache = {}
 
 class Attendancetable(models.Model):
     recordid = models.AutoField(db_column='RecordID', primary_key=True)  # Field name made lowercase. The composite primary key (RecordID, EmployeeID, Date) found, that is not supported. The first column is selected.
@@ -176,15 +176,30 @@ class DynamicSalaryView(models.Model):
 
     class Meta:
         abstract = True
-        managed = False
+
 
 def get_salary_view_model(year_month):
+    # 替换连字符为下划线以匹配视图名称
+    formatted_year_month = year_month.replace('-', '_')
+
+    # 构建模型名称
+    model_name = f'SalaryView{formatted_year_month}'
+
+    # 如果模型已经存在于缓存中，则直接返回
+    if model_name in _model_cache:
+        return _model_cache[model_name]
+
     class Meta:
-        db_table = f'SalaryView_{year_month}'
+        db_table = f'SalaryView_{formatted_year_month}'
         managed = False
 
     attrs = {
-        '__module__': DynamicSalaryView.__module__,
-        'Meta': Meta,
+        '__module__': DynamicSalaryView.__module__,  # 设置新类的模块属性
+        'Meta': Meta,  # 将内部的 Meta 类添加到新类中
     }
-    return type(f'SalaryView{year_month.replace("-", "_")}', (DynamicSalaryView,), attrs)
+
+    # 动态创建新的模型类并缓存它
+    model_class = type(model_name, (DynamicSalaryView,), attrs)
+    _model_cache[model_name] = model_class
+
+    return model_class
