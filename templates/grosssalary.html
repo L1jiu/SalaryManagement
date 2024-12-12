@@ -37,16 +37,10 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           <li class="nav-item">
-            <a href="{% url 'basicinfor:employee_management' %}" class="nav-link {% if view_type == 'employees' %}active{% endif %}">员工信息管理</a>
-          </li>
-          <li class="nav-item">
-            <a href="{% url 'basicinfor:position_management' %}" class="nav-link {% if view_type == 'positions' %}active{% endif %}">职位信息管理</a>
-          </li>
-          <li class="nav-item">
-            <a href="{% url 'basicinfor:employee_position_management' %}" class="nav-link {% if view_type == 'employee_positions' %}active{% endif %}">员工职位管理</a>
-          </li>
-          <li class="nav-item">
             <a href="{% url 'salary:grosssalary' %}" class="nav-link active">毛工资概览</a>
+          </li>
+            <li class="nav-item">
+            <a href="{% url 'salary:netsalary' %}" class="nav-link active">净工资概览</a>
           </li>
         </ul>
       </div>
