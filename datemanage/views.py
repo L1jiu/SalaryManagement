@@ -1,17 +1,23 @@
-from django.views.decorators.csrf import csrf_protect
-import logging
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
+import json
+import logging
 
-from django.views.decorators.csrf import csrf_protect
 
-from .models import Employeetable, Attendancetable, Workdaytable, Performanceevaluationtable
-from .models import Employeebonustable
-# 设置日志记录
+# 初始化日志记录器
 logger = logging.getLogger(__name__)
 
+from .models import (
+    Employeetable,
+    Attendancetable,
+    Workdaytable,
+    Performanceevaluationtable,
+    Employeebonustable,
+    Bonustable
+)
 
-
+@csrf_exempt
 def attendance_management(request):
     if request.method == 'POST':
         try:
@@ -78,15 +84,6 @@ def attendance_management(request):
         return render(request, 'attendance_management.html', context)
 
 
-
-from django.shortcuts import render
-from django.http import JsonResponse
-from .models import Performanceevaluationtable, Employeetable
-import logging
-
-# 初始化日志
-logger = logging.getLogger(__name__)
-
 def performance_evaluation_management(request):
     try:
         # 获取所有绩效考核记录
@@ -111,12 +108,6 @@ def performance_evaluation_management(request):
         return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
 
 
-from django.shortcuts import get_object_or_404
-
-from django.shortcuts import render
-from .models import Employeetable, Employeebonustable
-
-
 def employee_bonus_management(request):
     if request.method == "GET":
         # 查询所有员工信息（包括员工姓名等）
@@ -136,9 +127,6 @@ def employee_bonus_management(request):
         })
 
     elif request.method == "POST":
-        import json
-        from django.http import JsonResponse
-
         try:
             data = json.loads(request.body)
             action = data.get('action', '').lower()
@@ -191,5 +179,46 @@ def employee_bonus_management(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
     else:
-        from django.http import HttpResponseNotAllowed
         return HttpResponseNotAllowed(['GET', 'POST'])
+
+
+
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from .models import Bonustable
+from .forms import BonustableForm  # 使用新定义的表单类
+
+def combined_bonuses(request):
+    bonuses = Bonustable.objects.all().order_by('-paymentdate')
+
+    if request.method == 'POST':
+        if 'add_bonus' in request.POST:
+            form = BonustableForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Bonus added successfully.')
+                return redirect('datemanage:combined_bonuses')  # 使用命名空间和连字符
+            else:
+                messages.error(request, 'Please correct the errors below.')
+        elif 'delete_bonus' in request.POST:
+            bonus_id = request.POST.get('bonus_id')
+            if bonus_id:
+                try:
+                    bonus = Bonustable.objects.get(pk=bonus_id)
+                    bonus.delete()
+                    messages.success(request, 'Bonus deleted successfully.')
+                except Bonustable.DoesNotExist:
+                    messages.error(request, 'The specified bonus does not exist.')
+            else:
+                messages.error(request, 'No bonus ID provided.')
+            return redirect('datemanage:combined_bonuses')  # 使用命名空间和连字符
+    else:
+        form = BonustableForm()
+
+    context = {
+        'bonuses': bonuses,
+        'form': form,
+    }
+
+    return render(request, 'combined_bonus.html', context)

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>企业工资管理系统 - 奖金管理</title>
+  <!-- Bootstrap CSS -->
+  <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+  <style>
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #333;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      opacity: 1;
+      transition: opacity 0.5s ease-in-out;
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+</head>
+<body>
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+  <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a href="/" class="navbar-brand">企业工资管理系统</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a href="{% url 'datemanage:attendance_management' %}" class="nav-link">考勤管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'datemanage:performance_evaluation_management' %}" class="nav-link">绩效考核管理</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'datemanage:combined_bonuses' %}" class="nav-link active">奖金管理</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要内容区 -->
+  <main class="container mt-5">
+    <h1 class="mb-4">员工奖金管理</h1>
+    
+    <!-- 显示消息 -->
+    {% if messages %}
+    <ul class="list-unstyled mb-4">
+      {% for message in messages %}
+      <li class="alert alert-{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    
+    <!-- 添加奖金按钮 -->
+    <button id="addBonusButton" class="btn btn-primary mb-3">添加新奖金</button>
+
+    <!-- 添加奖金表单容器，默认隐藏 -->
+    <div id="addBonusFormContainer" style="display:none;">
+      <form method="post" novalidate class="mb-5">
+        {% csrf_token %}
+        <fieldset class="mb-3">
+          <legend class="border-bottom mb-4">添加新奖金</legend>
+          {{ form.as_p }}
+          <button type="submit" name="add_bonus" class="btn btn-primary">保存</button>
+          <button type="button" id="cancelAddBonus" class="btn btn-secondary">取消</button>
+        </fieldset>
+      </form>
+    </div>
+
+    <!-- 显示奖金列表 -->
+    <table class="table table-striped table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">金额</th>
+          <th scope="col">支付日期</th>
+          <th scope="col">原因</th>
+          <th scope="col">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bonus in bonuses %}
+        <tr>
+          <th scope="row">{{ bonus.bonusid }}</th>
+          <td>{{ bonus.amount }}</td>
+          <td>{{ bonus.paymentdate }}</td>
+          <td>{{ bonus.reason }}</td>
+          <td>
+            <form method="post" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="bonus_id" value="{{ bonus.bonusid }}">
+              <button type="submit" name="delete_bonus" class="btn btn-danger btn-sm delete-btn" onclick="return confirm('确定要删除此奖金吗？')">删除</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center">没有可用的奖金。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+      // 显示添加奖金表单
+      document.getElementById('addBonusButton').addEventListener('click', function() {
+        document.getElementById('addBonusFormContainer').style.display = 'block';
+      });
+
+      // 隐藏添加奖金表单
+      document.getElementById('cancelAddBonus').addEventListener('click', function() {
+        document.getElementById('addBonusFormContainer').style.display = 'none';
+      });
+
+      // 显示通知的方法
+      function showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'toast';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
+        }, 3000); // 3秒后自动关闭通知
+      }
+
+      // 监听删除按钮点击事件
+      document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('delete-btn')) {
+          fetch('{% url "datemanage:combined_bonuses" %}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-CSRFToken': csrfToken
+            },
+            body: new URLSearchParams({
+              'action': 'delete',
+              'bonus_id': e.target.closest('tr').querySelector('[name="bonus_id"]').value,
+              'csrfmiddlewaretoken': csrfToken
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              e.target.closest('tr').remove();
+              showNotification('删除成功！');
+            } else {
+              showNotification('删除时出错：' + JSON.stringify(data.errors));
+            }
+          })
+          .catch(error => {
+            console.error("AJAX Error:", error);
+            showNotification('删除时发生错误。');
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

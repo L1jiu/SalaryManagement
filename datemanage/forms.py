@@ -22,25 +22,10 @@ class AttendancetableForm(forms.ModelForm):
             'clockouttime': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
         }
 
-class BonustableForm(forms.ModelForm):
-    class Meta:
-        model = Bonustable
-        fields = ['bonusid', 'amount', 'paymentdate', 'reason', 'employee']  # 包括员工外键字段
-        widgets = {
-            'bonusid': forms.TextInput(attrs={'class': 'form-control'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-control'}),
-            'paymentdate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'employee': forms.Select(attrs={'class': 'form-control'}),  # 外键字段的选择框
-        }
 
-from django import forms
-from .models import Employeebonustable
 
-class EmployeebonustableForm(forms.ModelForm):
-    class Meta:
-        model = Employeebonustable
-        fields = ['EmployeeID', 'BonusID', 'Amount', 'PaymentDate', 'Reason']
+
+
 
 
 class PerformanceevaluationtableForm(forms.ModelForm):
@@ -72,14 +57,28 @@ class WorkdaytableForm(forms.ModelForm):
             'isworkday': forms.Select(choices=[(1, '是'), (0, '否')], attrs={'class': 'form-control'}),
         }
 
+
 from django import forms
 from .models import Bonustable
 
-class BonusForm(forms.ModelForm):
+class BonustableForm(forms.ModelForm):
     class Meta:
         model = Bonustable
-        fields = ['amount', 'paymentdate', 'reason']
+        fields = ['bonusid', 'amount', 'paymentdate', 'reason']
         widgets = {
+            'bonusid': forms.TextInput(attrs={'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'paymentdate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+class EmployeebonustableForm(forms.ModelForm):
+    class Meta:
+        model = Employeebonustable
+        fields = ['employee', 'bonus', 'amount', 'paymentdate', 'reason']
+        widgets = {
+            'employee': forms.Select(attrs={'class': 'form-control'}),
+            'bonus': forms.Select(attrs={'class': 'form-control'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'paymentdate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
