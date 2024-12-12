@@ -7,4 +7,6 @@ urlpatterns = [
 
     path('salary/netsalary', views.netsalary, name='netsalary'),
 
+    path('salary/export-to-excel', views.export_to_excel, name='export_to_excel'),
+
 ]

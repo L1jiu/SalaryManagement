@@ -55,7 +55,7 @@
   <!-- 主要内容区 -->
   <main class="container mt-5">
     <h1 class="mb-4">净工资概览</h1>
-    
+
     <form id="salaryForm" method="get" onsubmit="handleFormSubmit(event)" class="mb-3">
       {% csrf_token %}
       <div class="input-group">
@@ -127,7 +127,8 @@
         </div>
       </div>
     </section>
-
+    <!-- 导出按钮 -->
+<a href="{% url 'salary:export_to_excel' %}?year_month={{ selected_year_month }}" class="btn btn-primary">导出为Excel</a>
     <table class="table table-striped table-hover mt-4">
       <thead class="table-dark">
         <tr>

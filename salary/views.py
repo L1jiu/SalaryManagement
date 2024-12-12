@@ -1,16 +1,26 @@
+from io import BytesIO
+from urllib.parse import quote
+
+import pandas as pd
 from django.contrib import messages
 from django.core.serializers.json import DjangoJSONEncoder
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.shortcuts import render, redirect
 from django.db.models import Sum, F, DecimalField, Value, Avg
 from django.db.models.functions import Coalesce
 from django.db.models.expressions import ExpressionWrapper
+from django.views.decorators.csrf import csrf_exempt
+
 from .models import Grosssalary, Employeetable, Positiontable
 import json
 from django.db import connection
 from .models import get_salary_view_model
 from django.utils import timezone
 from django.db.models import Avg, Max, Min, Sum, Count
+import logging
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 
 def grosssalary(request):
@@ -194,3 +204,64 @@ def netsalary(request):
     }
 
     return render(request, 'netsalary.html', context)
+
+
+FIELD_NAME_MAP = {
+    'id': 'ID',
+    'employeeid': '员工编号',
+    'basesalary': '基本工资',
+    'netsalary': '净工资',
+    'year_month': '年月',
+    'name':'姓名',
+    'absentdeduction':'缺勤扣款',
+    'overtimepay':'加班工资',
+    'performancebonus':'绩效奖金',
+    'yearendbonus':'年终奖',
+    'socialsecurityandhousingfund':'五险一金扣除',
+    'incometax':'个税扣除'
+}
+
+
+@csrf_exempt
+def export_to_excel(request):
+    selected_year_month = request.GET.get('year_month') or timezone.now().strftime('%Y_%m')
+    selected_year_month_display = selected_year_month.replace('_', '-')  # 用于显示
+    logger.info(f"Selected year-month for export: {selected_year_month}")
+
+    try:
+        SalaryView = get_salary_view_model(selected_year_month)
+        salaries = SalaryView.objects.all()
+
+        if not salaries.exists():
+            logger.warning(f'No salary data found for export in {selected_year_month}. Returning 404.')
+            raise Http404("没有找到工资数据进行导出。")
+
+        # 获取原始数据并重命名列
+        df = pd.DataFrame(list(salaries.values()))
+        df.rename(columns=FIELD_NAME_MAP, inplace=True)
+
+        output = BytesIO()
+        sheet_name = f'净工资-{selected_year_month}'
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+            writer.close()  # 确保所有数据都被写入到output中
+
+        # 动态生成文件名，并使用quote进行URL编码
+        file_name = f'净工资-{selected_year_month_display}.xlsx'
+        encoded_filename = quote(file_name)
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+        # 设置Content-Disposition头部，确保兼容性
+        response[
+            'Content-Disposition'] = f'attachment; filename="{encoded_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+
+        response.write(output.getvalue())
+        return response
+
+    except Http404:
+        raise  # 让Django处理404异常
+    except Exception as e:
+        logger.error(f'Error exporting salary data: {e}', exc_info=True)
+        messages.error(request, f'导出工资数据时出错: {e}')
+        return redirect('salary:netsalary')
