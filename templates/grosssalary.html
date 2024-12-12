@@ -39,8 +39,8 @@
           <li class="nav-item">
             <a href="{% url 'salary:grosssalary' %}" class="nav-link active">毛工资概览</a>
           </li>
-            <li class="nav-item">
-            <a href="{% url 'salary:netsalary' %}" class="nav-link active">净工资概览</a>
+          <li class="nav-item">
+            <a href="{% url 'salary:netsalary' %}" class="nav-link">净工资概览</a>
           </li>
         </ul>
       </div>
@@ -54,7 +54,13 @@
       <div class="input-group">
         <select name="year" class="form-select" id="year">
           {% for year in years %}
-            <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
+            <option value="{{ year }}" {% if selected_year == year|stringformat:"d" %}selected{% endif %}>{{ year }}</option>
+          {% endfor %}
+        </select>
+        <select name="month" class="form-select" id="month">
+          <option value="">请选择月份</option>
+          {% for month in months %}
+            <option value="{{ month }}" {% if selected_month == month %}selected{% endif %}>{{ month }}</option>
           {% endfor %}
         </select>
         <button type="submit" class="btn btn-primary">查询</button>
@@ -80,7 +86,7 @@
       <tbody>
         {% for salary in salaries %}
         <tr>
-          <td>{{ salary.employeeid.employeeid }}</td>  <!-- 使用 employeeid 字段 -->
+          <td>{{ salary.employeeid.employeeid }}</td>
           <td>{{ salary.employeeid.name }}</td>
           <td>{{ salary.month }}月</td>
           <td>{{ salary.basesalary.basesalary }}</td>
@@ -96,45 +102,80 @@
   </main>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const ctx = document.getElementById('salary-chart').getContext('2d');
-      const chartData = JSON.parse('{{ chart_data|safe }}');
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-          datasets: chartData
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: true
-            }
+document.addEventListener('DOMContentLoaded', function () {
+  const ctx = document.getElementById('salary-chart').getContext('2d');
+
+  // 准备图表数据
+  let chartType, chartLabels, datasets;
+
+  if ('{{ selected_month }}') { // 如果选择了具体月份，则准备柱状图数据
+    chartType = 'bar';
+    datasets = JSON.parse('{{ chart_data|safe }}').map(item => ({
+      label: item.label,
+      data: item.data,
+      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      borderColor: 'rgba(75, 192, 192, 1)',
+      borderWidth: 1
+    }));
+    chartLabels = datasets.map(item => item.label);
+  } else { // 如果没有选择具体月份，则准备年度折线图数据
+    chartType = 'line';
+    chartLabels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    
+    // 解析chart_data，创建多个dataset，每条线代表一个员工
+    datasets = JSON.parse('{{ chart_data|safe }}').map(item => ({
+      label: item.label,
+      data: item.data,
+      borderColor: getRandomColor(), // 为不同员工设置不同的颜色
+      fill: false,
+      borderWidth: 2
+    }));
+  }
+
+  // 只有当所有必要的变量都被定义并且datasets非空时才创建图表
+  if (chartType && chartLabels.length && datasets.length) {
+    new Chart(ctx, {
+      type: chartType,
+      data: {
+        labels: chartLabels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
           }
         }
-      });
-
-      // 显示通知的方法
-      function showNotification(message) {
-        const notification = document.createElement('div');
-        notification.className = 'toast';
-        notification.textContent = message;
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-          notification.style.opacity = '0';
-          setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
-        }, 3000); // 3秒后自动关闭通知
       }
-
-      // 处理表单提交后的通知（如果有）
-      {% if messages %}
-        {% for message in messages %}
-          showNotification('{{ message }}');
-        {% endfor %}
-      {% endif %}
     });
-  </script>
+  }
+
+  // 辅助函数：生成随机颜色用于折线图的不同线条
+  function getRandomColor() {
+    return '#' + Math.floor(Math.random()*16777215).toString(16);
+  }
+
+  // 显示通知的方法
+  function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'toast';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
+    }, 3000); // 3秒后自动关闭通知
+  }
+
+  // 处理表单提交后的通知（如果有）
+  {% if messages %}
+    {% for message in messages %}
+      showNotification('{{ message }}');
+    {% endfor %}
+  {% endif %}
+});
+</script>
 </body>
 </html>
