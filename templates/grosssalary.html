@@ -110,14 +110,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if ('{{ selected_month }}') { // 如果选择了具体月份，则准备柱状图数据
     chartType = 'bar';
-    datasets = JSON.parse('{{ chart_data|safe }}').map(item => ({
-      label: item.label,
-      data: item.data,
+    const parsedData = JSON.parse('{{ chart_data|safe }}');
+    datasets = [{
+      label: '工资',
+      data: parsedData.map(item => item.data[0]), // 单个月份的数据
       backgroundColor: 'rgba(75, 192, 192, 0.2)',
       borderColor: 'rgba(75, 192, 192, 1)',
       borderWidth: 1
-    }));
-    chartLabels = datasets.map(item => item.label);
+    }];
+    chartLabels = parsedData.map(item => item.label); // 员工名字作为标签
   } else { // 如果没有选择具体月份，则准备年度折线图数据
     chartType = 'line';
     chartLabels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
