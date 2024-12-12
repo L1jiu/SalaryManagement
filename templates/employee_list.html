@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>员工列表</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 80%;
+            margin: 0 auto;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        thead {
+            background-color: #333;
+            color: #fff;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+        a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+        }
+        .home-btn {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .home-btn:hover {
+            background-color: #0056b3;
+        }
+        .back-btn {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-btn:hover {
+            background-color: #111;
+        }
+    </style>
+</head>
+<body>
+    <div class="button-container">
+        <a href="http://localhost:8000/" class="home-btn">主页</a>
+
+    </div>
+    <h1>员工列表</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>姓名</th>
+                <th>性别</th>
+                <th>电话号码</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for employee in employees %}
+            <tr>
+                <td><a href="{% url 'sshftax:employee_details' employee.employeeid %}">{{ employee.name }}</a></td>
+                <td>{{ employee.gender }}</td>
+                <td>{{ employee.phonenumber }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
