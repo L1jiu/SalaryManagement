@@ -73,7 +73,7 @@
     <!-- 主要内容区 -->
     <main class="container mt-5">
         <h1 class="mb-4">绩效考核管理</h1>
-        
+
         <!-- 显示绩效考核记录表格 -->
         <form id="performanceEvaluationForm" data-action="manage">
             <div class="table-responsive">
@@ -94,7 +94,22 @@
                                 <tr data-id="{{ record.id }}">
                                     <td>{{ record.employee_name }}</td>
                                     <td>{{ record.employeeid }}</td>
-                                    <td>{{ record.indicatorname }}</td>
+                                            
+                                    <td>
+                                              {% with indicator_str=record.indicatorname|stringformat:"s" %}{% if 'Performancetable object (团队合作)' == indicator_str %}
+                                                 团队合作
+                                                {% elif 'Performancetable object (创新能力)' == indicator_str %}
+                                                 创新能力
+                                                {% elif 'Performancetable object (客户满意度)' == indicator_str %}
+                                                    客户满意度
+                                                {% elif 'Performancetable object (项目完成度)' == indicator_str %}
+                                                     项目完成度
+                                                {% else %}
+                                                  {{ indicator_str }} <!-- 如果没有匹配到，则显示原始字符串 -->
+                                                {% endif %}
+                                                {% endwith %}
+                                    </td>
+                                
                                     <td>{{ record.score }}</td>
                                     <td>{{ record.evaluationdate }}</td>
                                     <!-- 移除了 "操作" 列的单元格 -->

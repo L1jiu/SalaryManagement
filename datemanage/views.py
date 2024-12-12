@@ -17,6 +17,11 @@ from .models import (
     Bonustable
 )
 
+from django.utils.dateformat import format  # 引入 Django 的日期格式化工具
+
+from django.utils.dateformat import format  # 引入 Django 的日期格式化工具
+
+
 @csrf_exempt
 def attendance_management(request):
     if request.method == 'POST':
@@ -59,7 +64,8 @@ def attendance_management(request):
                     clockouttime=clock_out_time
                 )
                 logger.info(f"Added new attendance record: {new_attendance}")
-                return JsonResponse({'status': 'success', 'message': 'Attendance record added successfully', 'new_record_id': new_attendance.recordid})
+                return JsonResponse({'status': 'success', 'message': 'Attendance record added successfully',
+                                     'new_record_id': new_attendance.recordid})
 
             else:
                 error_message = 'Invalid action specified.'
@@ -77,8 +83,21 @@ def attendance_management(request):
     else:
         # 如果是GET请求，返回所有考勤记录并渲染视图
         attendances = Attendancetable.objects.select_related('employeeid', 'date').all()  # 使用select_related优化查询
+
+        # 格式化日期到 YYYY-MM-DD 格式
+        formatted_attendances = []
+        for attendance in attendances:
+            formatted_attendances.append({
+                'employeeid': attendance.employeeid,
+                'employee_name': attendance.employeeid.name,
+                'date': format(attendance.date.date, 'Y-m-d'),  # 确保输出的日期为字符串格式
+                'clockintime': attendance.clockintime,
+                'clockouttime': attendance.clockouttime,
+                'id': attendance.recordid,
+            })
+
         context = {
-            'attendances': attendances,
+            'attendances': formatted_attendances,
             'view_type': 'attendances'
         }
         return render(request, 'attendance_management.html', context)
