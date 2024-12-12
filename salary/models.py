@@ -158,3 +158,33 @@ class Workdaytable(models.Model):
     class Meta:
         managed = False
         db_table = 'workdaytable'
+
+from django.db import models, connection
+from django.utils.functional import cached_property
+
+class DynamicSalaryView(models.Model):
+    employeeid = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=100)
+    basesalary = models.DecimalField(max_digits=10, decimal_places=2)
+    absentdeduction = models.DecimalField(max_digits=10, decimal_places=2)
+    overtimepay = models.DecimalField(max_digits=10, decimal_places=2)
+    performancebonus = models.DecimalField(max_digits=10, decimal_places=2)
+    yearendbonus = models.DecimalField(max_digits=10, decimal_places=2)
+    socialsecurityandhousingfund = models.DecimalField(max_digits=10, decimal_places=2)
+    incometax = models.DecimalField(max_digits=10, decimal_places=2)
+    netsalary = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        abstract = True
+        managed = False
+
+def get_salary_view_model(year_month):
+    class Meta:
+        db_table = f'SalaryView_{year_month}'
+        managed = False
+
+    attrs = {
+        '__module__': DynamicSalaryView.__module__,
+        'Meta': Meta,
+    }
+    return type(f'SalaryView{year_month.replace("-", "_")}', (DynamicSalaryView,), attrs)

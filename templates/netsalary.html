@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>企业工资管理系统 - 毛工资概览</title>
+  <title>企业工资管理系统 - 净工资概览</title>
   <!-- Bootstrap CSS -->
   <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
   <style>
@@ -37,16 +37,10 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           <li class="nav-item">
-            <a href="{% url 'basicinfor:employee_management' %}" class="nav-link {% if view_type == 'employees' %}active{% endif %}">员工信息管理</a>
+            <a href="{% url 'salary:grosssalary' %}" class="nav-link">毛工资概览</a>
           </li>
           <li class="nav-item">
-            <a href="{% url 'basicinfor:position_management' %}" class="nav-link {% if view_type == 'positions' %}active{% endif %}">职位信息管理</a>
-          </li>
-          <li class="nav-item">
-            <a href="{% url 'basicinfor:employee_position_management' %}" class="nav-link {% if view_type == 'employee_positions' %}active{% endif %}">员工职位管理</a>
-          </li>
-          <li class="nav-item">
-            <a href="{% url 'salary:grosssalary' %}" class="nav-link active">毛工资概览</a>
+            <a href="{% url 'salary:netsalary' %}" class="nav-link active">净工资概览</a>
           </li>
         </ul>
       </div>
@@ -55,17 +49,22 @@
 
   <!-- 主要内容区 -->
   <main class="container mt-5">
-    <h1 class="mb-4">毛工资概览</h1>
-    <form method="get" class="mb-3">
+    <h1 class="mb-4">净工资概览</h1>
+    
+    <form method="post" onsubmit="onSubmit(event)" class="mb-3">
+      {% csrf_token %}
       <div class="input-group">
-        <select name="year" class="form-select" id="year">
-          {% for year in years %}
-            <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
-          {% endfor %}
-        </select>
+        <input type="month" id="year_month" name="year_month" value="{{ selected_year_month|default_if_none:'2024-01' }}" class="form-control">
         <button type="submit" class="btn btn-primary">查询</button>
+        <button type="submit" class="btn btn-success">重新计算并展示当月工资</button>
       </div>
+      <input type="hidden" name="action" value="query">
+      <input type="hidden" name="action" value="calculate">
     </form>
+
+    {% if avg_netsalary is not None %}
+    <p>平均净工资: {{ avg_netsalary }}</p>
+    {% endif %}
 
     <canvas id="salary-chart"></canvas>
 
@@ -74,27 +73,29 @@
         <tr>
           <th scope="col">员工ID</th>
           <th scope="col">姓名</th>
-          <th scope="col">月份</th>
           <th scope="col">基本工资</th>
           <th scope="col">缺勤扣款</th>
           <th scope="col">加班费</th>
           <th scope="col">绩效奖金</th>
-          <th scope="col">年终奖金</th>
-          <th scope="col">总毛工资</th>
+          <th scope="col">年终奖</th>
+          <th scope="col">五险一金</th>
+          <th scope="col">个人所得税</th>
+          <th scope="col">净工资</th>
         </tr>
       </thead>
       <tbody>
         {% for salary in salaries %}
         <tr>
-          <td>{{ salary.employeeid.employeeid }}</td>  <!-- 使用 employeeid 字段 -->
-          <td>{{ salary.employeeid.name }}</td>
-          <td>{{ salary.month }}月</td>
-          <td>{{ salary.basesalary.basesalary }}</td>
+          <td>{{ salary.employeeid }}</td>
+          <td>{{ salary.name }}</td>
+          <td>{{ salary.basesalary }}</td>
           <td>{{ salary.absentdeduction }}</td>
           <td>{{ salary.overtimepay }}</td>
           <td>{{ salary.performancebonus }}</td>
           <td>{{ salary.yearendbonus }}</td>
-          <td>{{ salary.total_gross_salary }}</td>
+          <td>{{ salary.socialsecurityandhousingfund }}</td>
+          <td>{{ salary.incometax }}</td>
+          <td>{{ salary.netsalary }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -102,6 +103,15 @@
   </main>
 
   <script>
+    function onSubmit(event) {
+      event.preventDefault();
+      var form = document.querySelector('form');
+      var action = event.submitter.classList.contains('btn-success') ? "calculate" : "query";
+      form.querySelector('input[name="action"]').value = action;
+      form.setAttribute("method", action === "calculate" ? "post" : "get");
+      form.submit();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
       const ctx = document.getElementById('salary-chart').getContext('2d');
       const chartData = JSON.parse('{{ chart_data|safe }}');

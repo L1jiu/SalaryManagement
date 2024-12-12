@@ -5,4 +5,6 @@ app_name = 'salary'
 urlpatterns = [
     path('salary/grosssalary', views.grosssalary, name='grosssalary'),
 
+    path('salary/netsalary', views.netsalary, name='netsalary'),
+
 ]
