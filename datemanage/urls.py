@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views  # 导入视图模块
 
-app_name = 'attendance'  # 添加命名空间
+app_name = 'datemanage'  # 添加命名空间
 
 urlpatterns = [
     # 考勤管理路由

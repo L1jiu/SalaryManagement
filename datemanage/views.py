@@ -113,76 +113,83 @@ def performance_evaluation_management(request):
 
 from django.shortcuts import get_object_or_404
 
-
-
-from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
-import json
-from .models import Employeetable, Bonustable, Employeebonustable
-import logging
-
-logger = logging.getLogger(__name__)
-
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
-import json
 from .models import Employeetable, Employeebonustable
-import logging
 
-logger = logging.getLogger(__name__)
 
-@csrf_exempt
 def employee_bonus_management(request):
-    # 查询所有员工信息（包括员工姓名等）
-    employees = Employeetable.objects.all()
+    if request.method == "GET":
+        # 查询所有员工信息（包括员工姓名等）
+        employees = Employeetable.objects.all()
 
-    # 处理POST请求（发放奖金）
-    if request.method == "POST":
+        # 构建一个包含员工及其奖金记录的列表
+        employee_data = []
+        for employee in employees:
+            employee_bonuses = Employeebonustable.objects.filter(employee=employee)
+            employee_data.append({
+                'employee': employee,
+                'bonuses': employee_bonuses
+            })
+
+        return render(request, 'employee_bonus_management.html', {
+            'employee_data': employee_data  # 包含员工及对应奖金记录的数据
+        })
+
+    elif request.method == "POST":
+        import json
+        from django.http import JsonResponse
+
         try:
-            # 获取请求体并打印调试信息
-            raw_data = request.body.decode('utf-8')
-            logger.info(f"Received POST data: {raw_data}")  # 打印接收到的原始数据
+            data = json.loads(request.body)
+            action = data.get('action', '').lower()
 
-            # 尝试解析JSON数据
-            data = json.loads(raw_data)
-            employee_id = data.get('employeeid')
-            bonus_id = data.get('bonusid')
-            amount = data.get('amount')
-            payment_date = data.get('paymentdate')
-            reason = data.get('reason')
+            if action == 'delete':
+                bonus_id = data.get('bonusid')
+                if not bonus_id:
+                    return JsonResponse({'status': 'error', 'message': 'Bonus ID is required for deletion.'},
+                                        status=400)
 
-            # 数据验证
-            if not all([employee_id, bonus_id, amount, payment_date, reason]):
-                return JsonResponse({'status': 'error', 'message': 'All fields are required.'}, status=400)
+                deleted_count, _ = Employeebonustable.objects.filter(bonusid=bonus_id).delete()
+                if deleted_count > 0:
+                    return JsonResponse({'status': 'success', 'message': 'Bonus record deleted successfully.'})
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Bonus record not found.'}, status=404)
 
-            # 验证金额格式是否有效
-            try:
-                amount = float(amount)  # 确保amount是浮动型数字
-            except ValueError:
-                return JsonResponse({'status': 'error', 'message': 'Invalid amount format.'}, status=400)
+            else:  # 假设其他动作是添加新的奖金记录
+                employee_id = data.get('employeeid')
+                bonus_id = data.get('bonusid')
+                amount = data.get('amount')
+                payment_date = data.get('paymentdate')
+                reason = data.get('reason')
 
-            # 获取员工记录
-            employee = Employeetable.objects.get(employeeid=employee_id)
+                if not all([employee_id, bonus_id, amount, payment_date, reason]):
+                    return JsonResponse({'status': 'error', 'message': 'All fields are required.'}, status=400)
 
-            # 创建奖金记录到 Employeebonustable 中
-            Employeebonustable.objects.create(
-                employee=employee,
-                bonusid=bonus_id,
-                amount=amount,
-                paymentdate=payment_date,
-                reason=reason
-            )
+                try:
+                    amount = float(amount)  # 确保金额是浮点数
+                except ValueError:
+                    return JsonResponse({'status': 'error', 'message': 'Invalid amount format.'}, status=400)
 
-            return JsonResponse({'status': 'success', 'message': 'Bonus record added successfully.'})
+                try:
+                    employee = Employeetable.objects.get(employeeid=employee_id)
+                except Employeetable.DoesNotExist:
+                    return JsonResponse({'status': 'error', 'message': 'Employee does not exist.'}, status=400)
 
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON Decode Error: {e}")
+                Employeebonustable.objects.create(
+                    employee=employee,
+                    bonusid=bonus_id,
+                    amount=amount,
+                    paymentdate=payment_date,
+                    reason=reason
+                )
+
+                return JsonResponse({'status': 'success', 'message': 'Bonus record added successfully.'})
+
+        except json.JSONDecodeError:
             return JsonResponse({'status': 'error', 'message': 'Invalid JSON format.'}, status=400)
         except Exception as e:
-            logger.error(f"Unexpected Error: {e}")
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-    # GET请求（渲染奖金管理页面）
-    return render(request, 'employee_bonus_management.html', {'employees': employees})
+    else:
+        from django.http import HttpResponseNotAllowed
+        return HttpResponseNotAllowed(['GET', 'POST'])

@@ -10,33 +10,43 @@
     <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
     <script>
         $(document).ready(function(){
-            // 发放奖金按钮点击事件
-            $(".grant-bonus-btn").click(function(){
-                var employeeid = $(this).data("employeeid");
-                var bonusid = $(this).data("bonusid");
-                var amount = $("#amount_" + employeeid).val();
-                var paymentdate = $("#paymentdate_" + employeeid).val();
-                var reason = $("#reason_" + employeeid).val();
-
-                // 发放奖金的POST请求
+            // 发放奖金表单提交事件
+            $(".grant-bonus-form").submit(function(event){
+                event.preventDefault();
+                var form = $(this);
                 $.ajax({
-                    url: "{% url 'attendance:employee_bonus_management' %}",
+                    url: "{% url 'datemanage:employee_bonus_management' %}",
                     type: "POST",
-                    data: JSON.stringify({
-                        'employeeid': employeeid,
-                        'bonusid': bonusid,
-                        'amount': amount,
-                        'paymentdate': paymentdate,
-                        'reason': reason
-                    }),
-                    contentType: "application/json",
+                    data: form.serialize(),
                     success: function(response){
                         alert(response.message);
+                        location.reload();  // 刷新页面显示最新数据
                     },
                     error: function(xhr, status, error){
-                        alert("Error: " + error);
+                        alert("Error: " + xhr.responseText);
                     }
                 });
+            });
+
+            // 删除奖金记录点击事件
+            $(".delete-bonus-btn").click(function(event){
+                event.preventDefault();
+                if (confirm('确定要删除这条奖金记录吗？')) {
+                    var bonusid = $(this).data("bonusid");
+                    $.ajax({
+                        url: "{% url 'datemanage:employee_bonus_management' %}",
+                        type: "POST",
+                        data: JSON.stringify({ 'action': 'delete', 'bonusid': bonusid }),
+                        contentType: "application/json",
+                        success: function(response){
+                            alert(response.message);
+                            location.reload();  // 刷新页面显示最新数据
+                        },
+                        error: function(xhr, status, error){
+                            alert("Error: " + xhr.responseText);
+                        }
+                    });
+                }
             });
         });
     </script>
@@ -45,52 +55,53 @@
     <div class="container">
         <h1>员工奖金管理</h1>
 
-        <!-- 奖金记录 -->
-        <h2>所有奖金记录</h2>
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>员工姓名</th>
-                    <th>员工ID</th>
-                    <th>奖金ID</th>
-                    <th>奖金金额</th>
-                    <th>发放日期</th>
-                    <th>理由</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for employee in employees %}
-                <tr>
-                    <td>{{ employee.name }}</td>
-                    <td>{{ employee.employeeid }}</td>
-                    <td>
-                        <!-- 选择奖金ID -->
-                        <select id="bonusid_{{ employee.employeeid }}">
-                            {% for bonus in bonuses %}
-                                <option value="{{ bonus.bonusid }}">{{ bonus.bonusid }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td>
-                        <input type="text" id="amount_{{ employee.employeeid }}" placeholder="奖金金额" required>
-                    </td>
-                    <td>
-                        <input type="date" id="paymentdate_{{ employee.employeeid }}" required>
-                    </td>
-                    <td>
-                        <input type="text" id="reason_{{ employee.employeeid }}" placeholder="发放理由" required>
-                    </td>
-                    <td>
-                        <!-- 发放奖金按钮 -->
-                        <button class="btn btn-primary grant-bonus-btn" 
-                                data-employeeid="{{ employee.employeeid }}"
-                                data-bonusid="{{ bonus.bonusid }}">发放奖金</button>
-                    </td>
-                </tr>
+        <!-- 每个员工及其奖金记录 -->
+        {% for item in employee_data %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>{{ item.employee.name }}</strong> (ID: {{ item.employee.employeeid }})
+                <button type="button" class="btn btn-info" data-toggle="collapse" data-target="#bonus-form-{{ item.employee.employeeid }}">发放奖金</button>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% if item.bonuses %}
+                {% for bonus in item.bonuses %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>奖金ID: {{ bonus.bonusid }} - 金额: {{ bonus.amount }} - 发放日期: {{ bonus.paymentdate }} - 理由: {{ bonus.reason }}</span>
+                    <button class="btn btn-danger delete-bonus-btn ml-2" 
+                            data-bonusid="{{ bonus.bonusid }}">删除</button>
+                </li>
                 {% endfor %}
-            </tbody>
-        </table>
+                {% else %}
+                <li class="list-group-item">无奖金记录</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- 员工奖金发放表单 -->
+        <div id="bonus-form-{{ item.employee.employeeid }}" class="collapse mt-3">
+            <h3>为 {{ item.employee.name }} 发放奖金</h3>
+            <form class="grant-bonus-form">
+                <input type="hidden" name="employeeid" value="{{ item.employee.employeeid }}">
+                <div class="form-group">
+                    <label for="bonusid_{{ item.employee.employeeid }}">奖金ID:</label>
+                    <input type="text" class="form-control" id="bonusid_{{ item.employee.employeeid }}" name="bonusid" placeholder="奖金ID" required>
+                </div>
+                <div class="form-group">
+                    <label for="amount_{{ item.employee.employeeid }}">奖金金额:</label>
+                    <input type="number" step="0.01" class="form-control" id="amount_{{ item.employee.employeeid }}" name="amount" placeholder="奖金金额" required>
+                </div>
+                <div class="form-group">
+                    <label for="paymentdate_{{ item.employee.employeeid }}">发放日期:</label>
+                    <input type="date" class="form-control" id="paymentdate_{{ item.employee.employeeid }}" name="paymentdate" required>
+                </div>
+                <div class="form-group">
+                    <label for="reason_{{ item.employee.employeeid }}">理由:</label>
+                    <textarea class="form-control" id="reason_{{ item.employee.employeeid }}" name="reason" placeholder="发放理由" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">发放奖金</button>
+            </form>
+        </div>
+        {% endfor %}
     </div>
 </body>
 </html>
