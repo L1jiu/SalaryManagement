@@ -23,23 +23,18 @@ class Attendancetable(models.Model):
         unique_together = (('recordid', 'employeeid', 'date'),)
 
 
-
-
-
-from django.db import models
-
-class Employeebonustable(models.Model):
-    employee = models.ForeignKey('Employeetable', on_delete=models.CASCADE)  # 关联员工表
-    bonusid = models.CharField(max_length=50)  # 奖金ID
-    amount = models.DecimalField(max_digits=10, decimal_places=2)  # 奖金金额
-    paymentdate = models.DateField()  # 发放日期
-    reason = models.CharField(max_length=255)  # 奖金发放原因
-
-    def __str__(self):
-        return f"Bonus for {self.employee} - {self.bonusid}"
+class Bonustable(models.Model):
+    bonusid = models.AutoField(db_column='BonusID', primary_key=True)
+    amount = models.DecimalField(db_column='Amount', max_digits=10, decimal_places=2)
+    paymentdate = models.DateField(db_column='PaymentDate')
+    reason = models.TextField(db_column='Reason', blank=True, null=True)
 
     class Meta:
-        db_table = 'datemanage_employeebonustable'  # 确保表名正确
+        managed = False
+        db_table = 'bonustable'
+
+
+
 
 
 
@@ -63,16 +58,18 @@ class Performancetable(models.Model):
         managed = False
         db_table = 'performancetable'
 
-
-class Bonustable(models.Model):
-    bonusid = models.AutoField(db_column='BonusID', primary_key=True)  # Field name made lowercase.
-    amount = models.DecimalField(db_column='Amount', max_digits=10, decimal_places=2)  # Field name made lowercase.
-    paymentdate = models.DateField(db_column='PaymentDate')  # Field name made lowercase.
-    reason = models.TextField(db_column='Reason', blank=True, null=True)  # Field name made lowercase.
+class Employeebonustable(models.Model):
+    employee = models.ForeignKey('Employeetable', on_delete=models.CASCADE, db_column='EmployeeID')
+    bonus = models.ForeignKey(Bonustable, on_delete=models.DO_NOTHING, db_column='BonusID')
+    amount = models.DecimalField(db_column='Amount', max_digits=10, decimal_places=2)
+    paymentdate = models.DateField(db_column='PaymentDate')
+    reason = models.TextField(db_column='Reason', blank=True, null=True)
 
     class Meta:
         managed = False
-        db_table = 'bonustable'
+        db_table = 'employeebonustable'
+        unique_together = (('employee', 'bonus'),)
+
 
 
 class Workdaytable(models.Model):
