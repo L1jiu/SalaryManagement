@@ -64,21 +64,49 @@ from .models import Bonustable
 class BonustableForm(forms.ModelForm):
     class Meta:
         model = Bonustable
-        fields = ['bonusid', 'amount', 'paymentdate', 'reason']
+        fields = ['amount', 'paymentdate', 'reason']
         widgets = {
-            'bonusid': forms.TextInput(attrs={'class': 'form-control'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'paymentdate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
 class EmployeebonustableForm(forms.ModelForm):
+    employee = forms.ModelChoiceField(
+        queryset=Employeetable.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        empty_label="请选择员工"
+    )
+    bonus = forms.ModelChoiceField(
+        queryset=Bonustable.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        empty_label="请选择奖金"
+    )
+
     class Meta:
         model = Employeebonustable
-        fields = ['employee', 'bonus', 'amount', 'paymentdate', 'reason']
+        fields = ['employee', 'bonus']  # 只包含需要用户选择的字段
         widgets = {
             'employee': forms.Select(attrs={'class': 'form-control'}),
-            'bonus': forms.HiddenInput(),  # 如果这个字段不应该显示给用户
+            'bonus': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.bonus_id:
+            self.fields['bonus'].initial = self.instance.bonus
+
+class AddBonusAndAssignForm(forms.ModelForm):
+    employee = forms.ModelChoiceField(
+        queryset=Employeetable.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        empty_label="请选择员工"
+    )
+
+    class Meta:
+        model = Bonustable
+        fields = ['amount', 'paymentdate', 'reason']
+        widgets = {
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'paymentdate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),

@@ -1,10 +1,10 @@
 from django.db import models
 from django.db.models import Q
 class Employeetable(models.Model):
-    employeeid = models.AutoField(db_column='EmployeeID', primary_key=True)  # Field name made lowercase.
-    name = models.CharField(db_column='Name', max_length=100)  # Field name made lowercase.
-    gender = models.CharField(db_column='Gender', max_length=6)  # Field name made lowercase.
-    phonenumber = models.CharField(db_column='PhoneNumber', max_length=20, blank=True, null=True)  # Field name made lowercase.
+    employeeid = models.AutoField(db_column='EmployeeID', primary_key=True)
+    name = models.CharField(db_column='Name', max_length=100)
+    gender = models.CharField(db_column='Gender', max_length=6)
+    phonenumber = models.CharField(db_column='PhoneNumber', max_length=20, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -24,13 +24,12 @@ class Attendancetable(models.Model):
 
 
 class Bonustable(models.Model):
-    bonusid = models.AutoField(db_column='BonusID', primary_key=True)
-    amount = models.DecimalField(db_column='Amount', max_digits=10, decimal_places=2)
-    paymentdate = models.DateField(db_column='PaymentDate')
-    reason = models.TextField(db_column='Reason', blank=True, null=True)
+    BonusID = models.AutoField(primary_key=True, db_column='BonusID')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paymentdate = models.DateField()
+    reason = models.TextField()
 
     class Meta:
-        managed = False
         db_table = 'bonustable'
 
 
@@ -60,26 +59,14 @@ class Performancetable(models.Model):
 
 
 class Employeebonustable(models.Model):
-    employee = models.ForeignKey('Employeetable', on_delete=models.CASCADE, db_column='EmployeeID')
-    bonus = models.ForeignKey(Bonustable, on_delete=models.DO_NOTHING, db_column='BonusID')
-    amount = models.DecimalField(db_column='Amount', max_digits=10, decimal_places=2)
-    paymentdate = models.DateField(db_column='PaymentDate')
-    reason = models.TextField(db_column='Reason', blank=True, null=True)
-
-    @property
-    def pk(self):
-        return (self.employee_id, self.bonus_id)
+    employee = models.ForeignKey(Employeetable, on_delete=models.CASCADE, db_column='EmployeeID')
+    bonus = models.ForeignKey(Bonustable, on_delete=models.CASCADE, db_column='BonusID')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paymentdate = models.DateField()
+    reason = models.TextField()
 
     class Meta:
-        managed = False
         db_table = 'employeebonustable'
-        unique_together = (('employee', 'bonus'),)
-        constraints = [
-            models.UniqueConstraint(fields=['employee', 'bonus'], name='unique_employee_bonus')
-        ]
-
-    def __str__(self):
-        return f"Employee {self.employee_id} - Bonus {self.bonus_id}"
 
 
 class Workdaytable(models.Model):

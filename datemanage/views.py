@@ -4,9 +4,8 @@ from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseBadReq
 from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
-from .forms import BonustableForm
-from salary.forms import BonusForm
-from datemanage.models import EmployeeBonusTable, BonusTable, EmployeeTable
+from .forms import BonustableForm, EmployeebonustableForm, AddBonusAndAssignForm
+from .models import Employeebonustable, Bonustable, Employeetable
 
 # 初始化日志记录器
 logger = logging.getLogger(__name__)
@@ -130,32 +129,55 @@ def performance_evaluation_management(request):
         return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
 
 
+from django.shortcuts import render, redirect
+from django.http import HttpResponseBadRequest
+from .models import Bonustable, Employeebonustable
+
 def employee_bonus_management(request):
     if request.method == 'GET':
-        employee_bonuses = EmployeeBonusTable.objects.select_related('employee', 'bonus').all()
-        form = BonustableForm()  # 初始化空表单用于添加奖金
-        return render(request, 'bonuses.html', {
+        employee_bonuses = Employeebonustable.objects.select_related('employee', 'bonus').all()
+        form = AddBonusAndAssignForm()
+        return render(request, 'bonus.html', {
             'employee_bonuses': employee_bonuses,
             'form': form,
         })
     elif request.method == 'POST':
-        if 'add_bonus' in request.POST:
-            form = BonusForm(request.POST)
+        if 'add_and_assign_bonus' in request.POST:
+            form = AddBonusAndAssignForm(request.POST)
             if form.is_valid():
-                form.save()
-                return redirect('bonuses')
+                # 创建 Bonustable 记录
+                bonus = form.save()
+
+                # 获取选定的员工对象
+                employee = form.cleaned_data['employee']
+
+                # 创建 Employeebonustable 记录，避免手动设置主键
+                eb = Employeebonustable(
+                    employee=employee,
+                    bonus=bonus,
+                    amount=bonus.amount,
+                    paymentdate=bonus.paymentdate,
+                    reason=bonus.reason
+                )
+                eb.save()
+
+                return redirect('datemanage:employee_bonus_management')
             else:
-                return HttpResponseBadRequest("Invalid form data.")
+                employee_bonuses = Employeebonustable.objects.select_related('employee', 'bonus').all()
+                return render(request, 'bonus.html', {
+                    'employee_bonuses': employee_bonuses,
+                    'form': form,
+                }, status=400)  # 返回带有错误信息的响应
         elif 'delete_bonus' in request.POST:
             employee_id = request.POST.get('employee_id')
             bonus_id = request.POST.get('bonus_id')
             if employee_id and bonus_id:
                 try:
-                    eb = EmployeeBonusTable.objects.get(employee_id=employee_id, bonus_id=bonus_id)
+                    eb = Employeebonustable.objects.get(employee_id=employee_id, bonus_id=bonus_id)
                     eb.delete()
-                except EmployeeBonusTable.DoesNotExist:
+                except Employeebonustable.DoesNotExist:
                     pass
-            return redirect('bonuses')
+            return redirect('datemanage:employee_bonus_management')
         else:
             return HttpResponseBadRequest("Unknown action.")
     else:

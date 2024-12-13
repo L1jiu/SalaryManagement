@@ -1,0 +1,65 @@
+<h2 class="mt-5">发放新奖金</h2>
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<!-- 添加和分配奖金表单 -->
+<form method="post" action="{% url 'datemanage:employee_bonus_management' %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>
+        {{ form.employee.label_tag }}{{ form.employee }}
+        {{ form.employee.errors }}
+    </div>
+    <div>
+        {{ form.amount.label_tag }}{{ form.amount }}
+        {{ form.amount.errors }}
+    </div>
+    <div>
+        {{ form.paymentdate.label_tag }}{{ form.paymentdate }}
+        {{ form.paymentdate.errors }}
+    </div>
+    <div>
+        {{ form.reason.label_tag }}{{ form.reason }}
+        {{ form.reason.errors }}
+    </div>
+    <button type="submit" name="add_and_assign_bonus">添加并分配奖金</button>
+</form>
+
+<!-- 显示奖金列表 -->
+<h2>奖金管理</h2>
+<table>
+    <thead>
+        <tr>
+            <th>员工姓名</th>
+            <th>金额</th>
+            <th>支付日期</th>
+            <th>原因</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for eb in employee_bonuses %}
+        <tr>
+            <td>{{ eb.employee.name }}</td>
+            <td>{{ eb.bonus.amount }}</td>
+            <td>{{ eb.paymentdate }}</td>
+            <td>{{ eb.reason }}</td>
+            <td>
+                <form method="post" action="{% url 'datemanage:employee_bonus_management' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="employee_id" value="{{ eb.employee.id }}">
+                    <input type="hidden" name="bonus_id" value="{{ eb.bonus.id }}">
+                    <button type="submit" name="delete_bonus" onclick="return confirm('确定要删除吗?')">删除</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">暂无奖金记录。</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
