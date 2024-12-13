@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseBadRequest
@@ -7,8 +8,6 @@ import logging
 from .forms import BonustableForm, EmployeebonustableForm, AddBonusAndAssignForm
 from .models import Employeebonustable, Bonustable, Employeetable
 
-# 初始化日志记录器
-logger = logging.getLogger(__name__)
 
 from .models import (
     Employeetable,
@@ -23,8 +22,8 @@ from django.utils.dateformat import format  # 引入 Django 的日期格式化�
 
 from django.utils.dateformat import format  # 引入 Django 的日期格式化工具
 
-
-@csrf_exempt
+# 初始化日志记录器
+logger = logging.getLogger(__name__)
 def attendance_management(request):
     if request.method == 'POST':
         try:
@@ -133,52 +132,77 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponseBadRequest
 from .models import Bonustable, Employeebonustable
 
+import logging
+
+
 def employee_bonus_management(request):
     if request.method == 'GET':
+        # 获取所有员工奖金记录，并关联员工和奖金信息
         employee_bonuses = Employeebonustable.objects.select_related('employee', 'bonus').all()
         form = AddBonusAndAssignForm()
         return render(request, 'bonus.html', {
             'employee_bonuses': employee_bonuses,
             'form': form,
         })
+
     elif request.method == 'POST':
         if 'add_and_assign_bonus' in request.POST:
             form = AddBonusAndAssignForm(request.POST)
             if form.is_valid():
-                # 创建 Bonustable 记录
-                bonus = form.save()
+                try:
+                    with transaction.atomic():
+                        # 创建 Bonustable 记录并保存
+                        bonus = form.save()  # 这里直接保存 Bonus 对象
 
-                # 获取选定的员工对象
-                employee = form.cleaned_data['employee']
+                        # 获取选定的员工对象
+                        employee = form.cleaned_data['employee']
 
-                # 创建 Employeebonustable 记录，避免手动设置主键
-                eb = Employeebonustable(
-                    employee=employee,
-                    bonus=bonus,
-                    amount=bonus.amount,
-                    paymentdate=bonus.paymentdate,
-                    reason=bonus.reason
-                )
-                eb.save()
+                        # 创建 Employeebonustable 记录
+                        eb = Employeebonustable(
+                            employee=employee,
+                            bonus=bonus,
+                            amount=bonus.amount,
+                            paymentdate=bonus.paymentdate,
+                            reason=bonus.reason
+                        )
+                        eb.save()
 
-                return redirect('datemanage:employee_bonus_management')
+                        messages.success(request, "奖金已成功添加并分配给员工。")
+                        return redirect('datemanage:employee_bonus_management')
+                except Exception as e:
+                    logger.error(f"Error adding and assigning bonus: {e}")
+                    messages.error(request, "添加奖金时发生错误，请稍后再试。")
+
             else:
+                # 表单验证失败，返回带有错误信息的页面
                 employee_bonuses = Employeebonustable.objects.select_related('employee', 'bonus').all()
                 return render(request, 'bonus.html', {
                     'employee_bonuses': employee_bonuses,
                     'form': form,
-                }, status=400)  # 返回带有错误信息的响应
+                }, status=400)
+
         elif 'delete_bonus' in request.POST:
             employee_id = request.POST.get('employee_id')
             bonus_id = request.POST.get('bonus_id')
-            if employee_id and bonus_id:
-                try:
-                    eb = Employeebonustable.objects.get(employee_id=employee_id, bonus_id=bonus_id)
-                    eb.delete()
-                except Employeebonustable.DoesNotExist:
-                    pass
-            return redirect('datemanage:employee_bonus_management')
+
+            logger.debug(f"Received delete request with employee_id: {employee_id}, bonus_id: {bonus_id}")
+
+            if not (employee_id and bonus_id):
+                return JsonResponse({'status': 'error', 'message': '缺少必要的参数'}, status=400)
+
+            try:
+                eb = get_object_or_404(Employeebonustable, employee_id=employee_id, bonus__BonusID=bonus_id)
+                eb.delete()
+                logger.info(f"Successfully deleted record for employee_id: {employee_id}, bonus_id: {bonus_id}")
+                return JsonResponse({'status': 'success'})
+            except Exception as e:
+                logger.error(f"Error deleting record: {e}")
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
         else:
-            return HttpResponseBadRequest("Unknown action.")
+            logger.warning("Received unknown POST operation.")
+            return HttpResponseBadRequest("未知的操作")
+
     else:
-        return HttpResponseBadRequest("Unsupported method.")
+        logger.warning("Received unsupported HTTP method.")
+        return HttpResponseBadRequest("不支持的方法")

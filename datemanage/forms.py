@@ -96,6 +96,7 @@ class EmployeebonustableForm(forms.ModelForm):
         if self.instance.bonus_id:
             self.fields['bonus'].initial = self.instance.bonus
 
+
 class AddBonusAndAssignForm(forms.ModelForm):
     employee = forms.ModelChoiceField(
         queryset=Employeetable.objects.all(),

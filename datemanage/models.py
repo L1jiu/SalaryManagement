@@ -6,6 +6,9 @@ class Employeetable(models.Model):
     gender = models.CharField(db_column='Gender', max_length=6)
     phonenumber = models.CharField(db_column='PhoneNumber', max_length=20, blank=True, null=True)
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         managed = False
         db_table = 'employeetable'
@@ -59,6 +62,7 @@ class Performancetable(models.Model):
 
 
 class Employeebonustable(models.Model):
+    id = models.AutoField(primary_key=True)  # 显式声明主键字段
     employee = models.ForeignKey(Employeetable, on_delete=models.CASCADE, db_column='EmployeeID')
     bonus = models.ForeignKey(Bonustable, on_delete=models.CASCADE, db_column='BonusID')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
