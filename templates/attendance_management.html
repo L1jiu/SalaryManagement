@@ -98,37 +98,43 @@
         <button id="addAttendanceButton" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addAttendanceModal">添加考勤记录</button>
 
         <!-- 模态框 -->
-        <div class="modal fade" id="addAttendanceModal" tabindex="-1" aria-labelledby="addAttendanceModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="addAttendanceModalLabel">添加考勤记录</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+       <div class="modal fade" id="addAttendanceModal" tabindex="-1" aria-labelledby="addAttendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addAttendanceModalLabel">添加考勤记录</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAttendanceForm" method="post">
+                    <!-- CSRF Token for Django -->
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="employeeid" class="form-label">员工ID:</label>
+                        <input type="text" class="form-control" id="employeeid" name="employeeid" required>
                     </div>
-                    <div class="modal-body">
-                        <form id="addAttendanceForm">
-                            <div class="mb-3">
-                                <label for="employeeid" class="form-label">员工ID:</label>
-                                <input type="text" class="form-control" id="employeeid" name="employeeid" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="date" class="form-label">日期:</label>
-                                <input type="date" class="form-control" id="date" name="date" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="clockin_time" class="form-label">上班时间:</label>
-                                <input type="time" class="form-control" id="clockin_time" name="clockin_time" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="clockout_time" class="form-label">下班时间:</label>
-                                <input type="time" class="form-control" id="clockout_time" name="clockout_time" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">添加考勤记录</button>
-                        </form>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">日期:</label>
+                        <input type="date" class="form-control" id="date" name="date" required>
                     </div>
-                </div>
+                    <div class="mb-3">
+                        <label for="clockin_time" class="form-label">上班时间:</label>
+                        <input type="time" class="form-control" id="clockintime" name="clockintime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="clockout_time" class="form-label">下班时间:</label>
+                        <input type="time" class="form-control" id="clockouttime" name="clockouttime" required>
+                    </div>
+                    <!-- 添加此隐藏字段以指定操作 -->
+                    <input type="hidden" name="action" value="add">
+
+                    <button type="submit" class="btn btn-primary">添加考勤记录</button>
+                </form>
             </div>
         </div>
+    </div>
+</div>
 
         <hr>
 
@@ -146,7 +152,7 @@
             </thead>
             <tbody>
                 {% for attendance in attendances %}
-                <tr data-id="{{ attendance.id }}">
+                <tr data-id="{{ attendance.recordid }}">
                     <td>{{ attendance.employeeid.name }}</td>
                     <td>{{ attendance.employeeid.employeeid }}</td>
                     <td>{{ attendance.date }}</td>
@@ -166,88 +172,64 @@
     </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+$(document).ready(function() {
 
-            // 监听模态框表单的提交
-            document.getElementById('addAttendanceForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                const data = new FormData(this);
-
-                fetch('{% url "datemanage:attendance_management" %}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: data
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        $('#addAttendanceModal').modal('hide');  // 隐藏模态框
-                        location.reload();  // 刷新页面以显示新的考勤记录
-                        showNotification('考勤记录添加成功！');
-                    } else {
-                        showNotification('添加考勤记录时出错：' + JSON.stringify(data.errors));
-                    }
-                })
-                .catch(error => {
-                    console.error("AJAX Error:", error);
-                    showNotification('添加考勤记录时发生错误。');
-                });
-            });
-
-            // 删除考勤记录
-            document.addEventListener('click', function(e) {
-                if (e.target && e.target.classList.contains('delete-btn')) {
-                    const button = e.target;
-                    const row = button.closest('tr');
-                    const confirmDelete = confirm("确定要删除此考勤记录吗？");
-
-                    if (confirmDelete) {
-                        fetch('{% url "datemanage:attendance_management" %}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'X-CSRFToken': csrfToken
-                            },
-                            body: new URLSearchParams({
-                                'action': 'delete',
-                                'record_id': row.getAttribute('data-id'),
-                                'csrfmiddlewaretoken': csrfToken
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                row.remove();
-                                showNotification('删除成功！');
-                            } else {
-                                showNotification('删除考勤记录时出错：' + JSON.stringify(data.errors));
-                            }
-                        })
-                        .catch(error => {
-                            console.error("AJAX Error:", error);
-                            showNotification('删除考勤记录时发生错误。');
-                        });
-                    }
+    // 添加考勤记录
+    $('#addAttendanceForm').on('submit', function(event) {
+        event.preventDefault();
+        
+        $.ajax({
+            url: '{% url "datemanage:attendance_management" %}',  // 确保这个URL指向您的视图
+            type: 'POST',
+            data: $(this).serialize(),
+            headers: {
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#addAttendanceModal').modal('hide');
+                    location.reload();  // 刷新页面以显示新添加的记录
+                } else {
+                    alert('Error adding attendance record.');
                 }
-            });
-
-            // 显示通知的方法
-            function showNotification(message) {
-                const notification = document.createElement('div');
-                notification.className = 'toast';
-                notification.textContent = message;
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.style.opacity = 0;
-                    setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
-                }, 3000); // 3秒后自动关闭通知
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                alert('An error occurred while trying to add the attendance record.');
             }
         });
-    </script>
+    });
+
+    // 删除考勤记录
+    $('.delete-btn').on('click', function() {
+        var tr = $(this).closest('tr');
+        var recordId = tr.data('id');
+
+        $.ajax({
+            url: '{% url "datemanage:attendance_management" %}',  // 确保这个URL指向您的视图
+            type: 'POST',
+            data: {
+                'action': 'delete',
+                'recordid': recordId,
+                'csrfmiddlewaretoken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    tr.fadeOut(400, function() {
+                        $(this).remove();
+                    });
+                } else {
+                    alert('Error deleting attendance record.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                alert('An error occurred while trying to delete the attendance record.');
+            }
+        });
+    });
+
+});
+</script>
 </body>
 </html>

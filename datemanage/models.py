@@ -23,7 +23,7 @@ class Attendancetable(models.Model):
     class Meta:
         managed = False
         db_table = 'attendancetable'
-        unique_together = (('recordid', 'employeeid', 'date'),)
+        unique_together = (('employeeid', 'date'),)
 
 
 class Bonustable(models.Model):
