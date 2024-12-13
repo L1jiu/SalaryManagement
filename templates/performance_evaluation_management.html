@@ -40,6 +40,13 @@
             vertical-align: middle;
             text-align: center;
         }
+
+        /* 模态框样式 */
+        .modal-content {
+            width: 90%;
+            max-width: 600px;
+            margin: auto;
+        }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
@@ -63,7 +70,7 @@
                         <a href="{% url 'datemanage:performance_evaluation_management' %}" class="nav-link active">绩效考核管理</a>
                     </li>
                     <li class="nav-item">
-                        <a href="{% url 'datemanage:employee_bonus_management' %}" class="nav-link active">奖金管理</a>
+                        <a href="{% url 'datemanage:employee_bonus_management' %}" class="nav-link">奖金管理</a>
                     </li>
                 </ul>
             </div>
@@ -73,6 +80,11 @@
     <!-- 主要内容区 -->
     <main class="container mt-5">
         <h1 class="mb-4">绩效考核管理</h1>
+
+        <!-- 添加记录按钮 -->
+        <button type="button" class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#addPerformanceRecordModal">
+            添加绩效考核记录
+        </button>
 
         <!-- 显示绩效考核记录表格 -->
         <form id="performanceEvaluationForm" data-action="manage">
@@ -85,7 +97,6 @@
                             <th scope="col">指标名称</th>
                             <th scope="col">得分</th>
                             <th scope="col">考核日期</th>
-                            <!-- 移除了 "操作" 列 -->
                         </tr>
                     </thead>
                     <tbody>
@@ -94,25 +105,23 @@
                                 <tr data-id="{{ record.id }}">
                                     <td>{{ record.employee_name }}</td>
                                     <td>{{ record.employeeid }}</td>
-                                            
                                     <td>
-                                              {% with indicator_str=record.indicatorname|stringformat:"s" %}{% if 'Performancetable object (团队合作)' == indicator_str %}
-                                                 团队合作
-                                                {% elif 'Performancetable object (创新能力)' == indicator_str %}
-                                                 创新能力
-                                                {% elif 'Performancetable object (客户满意度)' == indicator_str %}
-                                                    客户满意度
-                                                {% elif 'Performancetable object (项目完成度)' == indicator_str %}
-                                                     项目完成度
-                                                {% else %}
-                                                  {{ indicator_str }} <!-- 如果没有匹配到，则显示原始字符串 -->
-                                                {% endif %}
-                                                {% endwith %}
+                                        {% with indicator_str=record.indicatorname|stringformat:"s" %}
+                                            {% if 'Performancetable object (团队合作)' == indicator_str %}
+                                                团队合作
+                                            {% elif 'Performancetable object (创新能力)' == indicator_str %}
+                                                创新能力
+                                            {% elif 'Performancetable object (客户满意度)' == indicator_str %}
+                                                客户满意度
+                                            {% elif 'Performancetable object (项目完成度)' == indicator_str %}
+                                                项目完成度
+                                            {% else %}
+                                                {{ indicator_str }}
+                                            {% endif %}
+                                        {% endwith %}
                                     </td>
-                                
                                     <td>{{ record.score }}</td>
                                     <td>{{ record.evaluationdate }}</td>
-                                    <!-- 移除了 "操作" 列的单元格 -->
                                 </tr>
                             {% endfor %}
                         {% else %}
@@ -126,31 +135,67 @@
         </form>
     </main>
 
+    <!-- 添加绩效考核记录的模态框 -->
+    <div class="modal fade" id="addPerformanceRecordModal" tabindex="-1" aria-labelledby="addPerformanceRecordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addPerformanceRecordModalLabel">添加绩效考核记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addPerformanceRecordForm">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="submitPerformanceRecord">确认添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        $(document).ready(function() {
+            $('#submitPerformanceRecord').click(function(e) {
+                e.preventDefault();
 
-            // 因为移除了操作列，所以注释掉与删除逻辑有关的代码。
-            /*
-            document.addEventListener('click', function(e) {
-                if (e.target && e.target.classList.contains('delete-btn')) {
-                    // ... 省略删除逻辑 ...
-                }
+                var form = $('#addPerformanceRecordForm');
+                var formData = new FormData(form[0]);
+
+                $.ajax({
+                    url: window.location.href, // 当前页面的URL
+                    type: 'POST',
+                    headers: {'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()},
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // 动态添加新行到表格中
+                            var newRow = `
+                                <tr data-id="${response.record.employeeid}">
+                                    <td>${response.record.employee_name}</td>
+                                    <td>${response.record.employeeid}</td>
+                                    <td>${response.record.indicatorname}</td>
+                                    <td>${response.record.score}</td>
+                                    <td>${response.record.evaluationdate}</td>
+                                </tr>`;
+                            $('table tbody').append(newRow);
+                            $('#addPerformanceRecordModal').modal('hide'); // 关闭模态框
+                            alert('添加成功！');
+                        } else {
+                            alert('添加失败，请检查输入信息。');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', xhr.responseText);
+                        alert('添加过程中出现错误，请检查控制台日志。');
+                    }
+                });
             });
-
-            // 显示通知的方法
-            function showNotification(message) {
-                const notification = document.createElement('div');
-                notification.className = 'toast';
-                notification.textContent = message;
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.style.opacity = '0';
-                    setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
-                }, 3000); // 3秒后自动关闭通知
-            }
-            */
         });
     </script>
 </body>
