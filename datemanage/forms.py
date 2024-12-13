@@ -78,7 +78,7 @@ class EmployeebonustableForm(forms.ModelForm):
         fields = ['employee', 'bonus', 'amount', 'paymentdate', 'reason']
         widgets = {
             'employee': forms.Select(attrs={'class': 'form-control'}),
-            'bonus': forms.Select(attrs={'class': 'form-control'}),
+            'bonus': forms.HiddenInput(),  # 如果这个字段不应该显示给用户
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'paymentdate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),

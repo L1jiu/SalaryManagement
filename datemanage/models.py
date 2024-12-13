@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.db.models import Q
 class Employeetable(models.Model):
     employeeid = models.AutoField(db_column='EmployeeID', primary_key=True)  # Field name made lowercase.
     name = models.CharField(db_column='Name', max_length=100)  # Field name made lowercase.
@@ -58,6 +58,7 @@ class Performancetable(models.Model):
         managed = False
         db_table = 'performancetable'
 
+
 class Employeebonustable(models.Model):
     employee = models.ForeignKey('Employeetable', on_delete=models.CASCADE, db_column='EmployeeID')
     bonus = models.ForeignKey(Bonustable, on_delete=models.DO_NOTHING, db_column='BonusID')
@@ -65,11 +66,20 @@ class Employeebonustable(models.Model):
     paymentdate = models.DateField(db_column='PaymentDate')
     reason = models.TextField(db_column='Reason', blank=True, null=True)
 
+    @property
+    def pk(self):
+        return (self.employee_id, self.bonus_id)
+
     class Meta:
         managed = False
         db_table = 'employeebonustable'
         unique_together = (('employee', 'bonus'),)
+        constraints = [
+            models.UniqueConstraint(fields=['employee', 'bonus'], name='unique_employee_bonus')
+        ]
 
+    def __str__(self):
+        return f"Employee {self.employee_id} - Bonus {self.bonus_id}"
 
 
 class Workdaytable(models.Model):

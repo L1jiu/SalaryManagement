@@ -1,9 +1,12 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponseNotAllowed
+from django.db import transaction
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
-
+from .forms import BonustableForm
+from salary.forms import BonusForm
+from datemanage.models import EmployeeBonusTable, BonusTable, EmployeeTable
 
 # 初始化日志记录器
 logger = logging.getLogger(__name__)
@@ -128,116 +131,32 @@ def performance_evaluation_management(request):
 
 
 def employee_bonus_management(request):
-    if request.method == "GET":
-        # 查询所有员工信息（包括员工姓名等）
-        employees = Employeetable.objects.all()
-
-        # 构建一个包含员工及其奖金记录的列表
-        employee_data = []
-        for employee in employees:
-            employee_bonuses = Employeebonustable.objects.filter(employee=employee)
-            employee_data.append({
-                'employee': employee,
-                'bonuses': employee_bonuses
-            })
-
-        return render(request, 'employee_bonus_management.html', {
-            'employee_data': employee_data  # 包含员工及对应奖金记录的数据
+    if request.method == 'GET':
+        employee_bonuses = EmployeeBonusTable.objects.select_related('employee', 'bonus').all()
+        form = BonustableForm()  # 初始化空表单用于添加奖金
+        return render(request, 'bonuses.html', {
+            'employee_bonuses': employee_bonuses,
+            'form': form,
         })
-
-    elif request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            action = data.get('action', '').lower()
-
-            if action == 'delete':
-                bonus_id = data.get('bonusid')
-                if not bonus_id:
-                    return JsonResponse({'status': 'error', 'message': 'Bonus ID is required for deletion.'},
-                                        status=400)
-
-                deleted_count, _ = Employeebonustable.objects.filter(bonusid=bonus_id).delete()
-                if deleted_count > 0:
-                    return JsonResponse({'status': 'success', 'message': 'Bonus record deleted successfully.'})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Bonus record not found.'}, status=404)
-
-            else:  # 假设其他动作是添加新的奖金记录
-                employee_id = data.get('employeeid')
-                bonus_id = data.get('bonusid')
-                amount = data.get('amount')
-                payment_date = data.get('paymentdate')
-                reason = data.get('reason')
-
-                if not all([employee_id, bonus_id, amount, payment_date, reason]):
-                    return JsonResponse({'status': 'error', 'message': 'All fields are required.'}, status=400)
-
-                try:
-                    amount = float(amount)  # 确保金额是浮点数
-                except ValueError:
-                    return JsonResponse({'status': 'error', 'message': 'Invalid amount format.'}, status=400)
-
-                try:
-                    employee = Employeetable.objects.get(employeeid=employee_id)
-                except Employeetable.DoesNotExist:
-                    return JsonResponse({'status': 'error', 'message': 'Employee does not exist.'}, status=400)
-
-                Employeebonustable.objects.create(
-                    employee=employee,
-                    bonusid=bonus_id,
-                    amount=amount,
-                    paymentdate=payment_date,
-                    reason=reason
-                )
-
-                return JsonResponse({'status': 'success', 'message': 'Bonus record added successfully.'})
-
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format.'}, status=400)
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-    else:
-        return HttpResponseNotAllowed(['GET', 'POST'])
-
-
-
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from .models import Bonustable
-from .forms import BonustableForm  # 使用新定义的表单类
-
-def combined_bonuses(request):
-    bonuses = Bonustable.objects.all().order_by('-paymentdate')
-
-    if request.method == 'POST':
+    elif request.method == 'POST':
         if 'add_bonus' in request.POST:
-            form = BonustableForm(request.POST)
+            form = BonusForm(request.POST)
             if form.is_valid():
                 form.save()
-                messages.success(request, 'Bonus added successfully.')
-                return redirect('datemanage:combined_bonuses')  # 使用命名空间和连字符
+                return redirect('bonuses')
             else:
-                messages.error(request, 'Please correct the errors below.')
+                return HttpResponseBadRequest("Invalid form data.")
         elif 'delete_bonus' in request.POST:
+            employee_id = request.POST.get('employee_id')
             bonus_id = request.POST.get('bonus_id')
-            if bonus_id:
+            if employee_id and bonus_id:
                 try:
-                    bonus = Bonustable.objects.get(pk=bonus_id)
-                    bonus.delete()
-                    messages.success(request, 'Bonus deleted successfully.')
-                except Bonustable.DoesNotExist:
-                    messages.error(request, 'The specified bonus does not exist.')
-            else:
-                messages.error(request, 'No bonus ID provided.')
-            return redirect('datemanage:combined_bonuses')  # 使用命名空间和连字符
+                    eb = EmployeeBonusTable.objects.get(employee_id=employee_id, bonus_id=bonus_id)
+                    eb.delete()
+                except EmployeeBonusTable.DoesNotExist:
+                    pass
+            return redirect('bonuses')
+        else:
+            return HttpResponseBadRequest("Unknown action.")
     else:
-        form = BonustableForm()
-
-    context = {
-        'bonuses': bonuses,
-        'form': form,
-    }
-
-    return render(request, 'combined_bonus.html', context)
+        return HttpResponseBadRequest("Unsupported method.")
