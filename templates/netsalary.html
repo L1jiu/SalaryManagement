@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>企业工资管理系统 - 净工资概览</title>
+  <!-- Bootstrap CSS -->
+  <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+  <style>
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #333;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      opacity: 1;
+      transition: opacity 0.5s ease-in-out;
+    }
+    /* 加载指示器 */
+    .loading-spinner {
+      display: none; /* 默认隐藏 */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+</head>
+<body>
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+  <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a href="/" class="navbar-brand">企业工资管理系统</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a href="{% url 'salary:grosssalary' %}" class="nav-link">毛工资概览</a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'salary:netsalary' %}" class="nav-link active">净工资概览</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要内容区 -->
+  <main class="container mt-5">
+    <h1 class="mb-4">净工资概览</h1>
+
+    <form id="salaryForm" method="get" onsubmit="handleFormSubmit(event)" class="mb-3">
+      {% csrf_token %}
+      <div class="input-group">
+        <input type="month" id="year_month" name="year_month" value="{{ selected_year_month|default_if_none:'2024-01' }}" class="form-control">
+        <button type="submit" name="action" value="query" class="btn btn-primary">查询</button>
+        <button type="button" onclick="calculateAndDisplay()" class="btn btn-success">重新计算并展示当月工资</button>
+      </div>
+    </form>
+
+    <!-- 工资统计信息 -->
+    <section class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title text-center">工资统计数据</h2>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-6 col-lg-4">
+                <div class="card text-white bg-primary mb-3">
+                  <div class="card-body text-center">
+                    <h5 class="card-title">平均净工资</h5>
+                    <p class="card-text">{{ avg_netsalary }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="card text-white bg-success mb-3">
+                  <div class="card-body text-center">
+                    <h5 class="card-title">最高净工资</h5>
+                    <p class="card-text">{{ max_netsalary }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="card text-white bg-danger mb-3">
+                  <div class="card-body text-center">
+                    <h5 class="card-title">最低净工资</h5>
+                    <p class="card-text">{{ min_netsalary }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="card text-white bg-info mb-3">
+                  <div class="card-body text-center">
+                    <h5 class="card-title">总净工资</h5>
+                    <p class="card-text">{{ total_netsalary }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="card text-white bg-warning mb-3">
+                  <div class="card-body text-center">
+                    <h5 class="card-title">员工总数</h5>
+                    <p class="card-text">{{ employee_count }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="card text-white bg-secondary mb-3">
+                  <div class="card-body text-center">
+                    <h5 class="card-title">平均基本工资</h5>
+                    <p class="card-text">{{ avg_basesalary }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- 导出按钮 -->
+<a href="{% url 'salary:export_to_excel' %}?year_month={{ selected_year_month }}" class="btn btn-primary">导出为Excel</a>
+    <table class="table table-striped table-hover mt-4">
+      <thead class="table-dark">
+        <tr>
+          <th scope="col">员工ID</th>
+          <th scope="col">姓名</th>
+          <th scope="col">基本工资</th>
+          <th scope="col">缺勤扣款</th>
+          <th scope="col">加班费</th>
+          <th scope="col">绩效奖金</th>
+          <th scope="col">年终奖</th>
+          <th scope="col">五险一金</th>
+          <th scope="col">个人所得税</th>
+          <th scope="col">净工资</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for salary in salaries %}
+        <tr>
+          <td>{{ salary.employeeid }}</td>
+          <td>{{ salary.name }}</td>
+          <td>{{ salary.basesalary }}</td>
+          <td>{{ salary.absentdeduction }}</td>
+          <td>{{ salary.overtimepay }}</td>
+          <td>{{ salary.performancebonus }}</td>
+          <td>{{ salary.yearendbonus }}</td>
+          <td>{{ salary.socialsecurityandhousingfund }}</td>
+          <td>{{ salary.incometax }}</td>
+          <td>{{ salary.netsalary }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+
+  <!-- 加载指示器 -->
+  <div class="spinner-border loading-spinner text-primary" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+
+  <script>
+    function handleFormSubmit(event) {
+      event.preventDefault();
+      const form = document.getElementById('salaryForm');
+      const action = event.submitter.value;
+
+      // 对于查询操作，直接提交表单
+      if (action === "query") {
+        showLoadingSpinner(true); // 显示加载指示器
+        form.submit();
+      }
+    }
+
+    function calculateAndDisplay() {
+      const yearMonth = document.getElementById('year_month').value.replace('-', '_');
+      const url = '{% url "salary:netsalary" %}';
+      const formData = new FormData();
+      formData.append('year_month', yearMonth);
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+      showLoadingSpinner(true); // 显示加载指示器
+
+      fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        updatePageContent(data);
+        showLoadingSpinner(false); // 隐藏加载指示器
+        showToast(`已成功重新计算 ${data.selected_year_month} 的工资。`);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showLoadingSpinner(false); // 隐藏加载指示器
+      });
+    }
+
+    function updatePageContent(data) {
+      // 更新表格数据
+      let tbody = document.querySelector('tbody');
+      tbody.innerHTML = '';
+      data.salaries.forEach(salary => {
+        let row = `<tr>
+          <td>${salary.employeeid}</td>
+          <td>${salary.name}</td>
+          <td>${salary.basesalary}</td>
+          <td>${salary.absentdeduction}</td>
+          <td>${salary.overtimepay}</td>
+          <td>${salary.performancebonus}</td>
+          <td>${salary.yearendbonus}</td>
+          <td>${salary.socialsecurityandhousingfund}</td>
+          <td>${salary.incometax}</td>
+          <td>${salary.netsalary}</td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+
+      // 更新统计信息
+      document.querySelector('.avg-netsalary').textContent = `平均净工资: ${data.avg_netsalary}`;
+      document.querySelector('.max-netsalary').textContent = `最高净工资: ${data.max_netsalary}`;
+      document.querySelector('.min-netsalary').textContent = `最低净工资: ${data.min_netsalary}`;
+      document.querySelector('.total-netsalary').textContent = `总净工资: ${data.total_netsalary}`;
+      document.querySelector('.employee-count').textContent = `员工总数: ${data.employee_count}`;
+      document.querySelector('.avg-basesalary').textContent = `平均基本工资: ${data.avg_basesalary}`;
+    }
+
+    function showLoadingSpinner(show) {
+      const spinner = document.querySelector('.loading-spinner');
+      spinner.style.display = show ? 'block' : 'none';
+    }
+
+    function showToast(message) {
+      var toastElement = document.createElement('div');
+      toastElement.innerHTML = `<div class="toast-header bg-light"><strong class="me-auto">通知</strong><small>现在</small><button type="button" class="btn-close" data-bs-dismiss="toast"></button></div><div class="toast-body">${message}</div>`;
+      var toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 3000 });
+      document.body.appendChild(toastElement);
+      toast.show();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // 初始化页面内容
+      updatePageContent({
+        salaries: JSON.parse('{{ salaries|safe }}'),
+        selected_year_month: "{{ selected_year_month_display }}",
+        avg_netsalary: "{{ avg_netsalary }}",
+        max_netsalary: "{{ max_netsalary }}", // 确保这些变量已经在视图中定义
+        min_netsalary: "{{ min_netsalary }}",
+        total_netsalary: "{{ total_netsalary }}",
+        employee_count: "{{ employee_count }}",
+        avg_basesalary: "{{ avg_basesalary }}"
+      });
+
+      // 显示Bootstrap Toast通知
+      {% if messages %}
+        {% for message in messages %}
+          showToast('{{ message|escapejs }}');
+        {% endfor %}
+      {% endif %}
+
+      // 隐藏加载指示器（如果页面加载完成时不需要显示）
+      showLoadingSpinner(false);
+    });
+  </script>
+</body>
+</html>

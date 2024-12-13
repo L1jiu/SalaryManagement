@@ -137,17 +137,18 @@
       $('.edit-btn').click(function() {
         var row = $(this).closest('tr');
         var originalName = row.find('.editable-cell').text();
-        var originalSalary = row.find('[scope="row"]').next().text();
+        var originalSalary = row.find('td:nth-child(2)').text();
 
         row.find('.editable-cell').html('<input type="text" value="' + originalName + '" class="form-control edit-input"/>');
-        row.find('[scope="row"]').next().html('<input type="number" value="' + originalSalary + '" class="form-control edit-input"/>');
+        row.find('td:nth-child(2)').html('<input type="number" value="' + originalSalary + '" class="form-control edit-input"/>');
 
         row.find('.edit-input').focus().blur(function(){
           var newName = row.find('.editable-cell .edit-input').val();
-          var newSalary = row.find('[scope="row"]').next().find('.edit-input').val();
+          var newSalary = row.find('td:nth-child(2) .edit-input').val();
           if (newName !== originalName || newSalary !== originalSalary) {
             var formData = {
-              'positionname': row.data('positionname'),
+              'action': 'update',
+              'original_positionname': originalName,
               'new_name': newName,
               'new_salary': newSalary,
               'csrfmiddlewaretoken': '{{ csrf_token }}'
@@ -161,31 +162,31 @@
               success: function(response) {
                 if (response.status === 'success') {
                   row.find('.editable-cell').text(newName);
-                  row.find('[scope="row"]').next().text(newSalary);
+                  row.find('td:nth-child(2)').text(newSalary);
                   alert('职位信息更新成功！');
                 } else {
                   row.find('.editable-cell').text(originalName);
-                  row.find('[scope="row"]').next().text(originalSalary); // 恢复原始值
+                  row.find('td:nth-child(2)').text(originalSalary); // 恢复原始值
                   alert('更新职位信息时出错：' + JSON.stringify(response.errors));
                 }
               },
               error: function(xhr, status, error) {
                 console.error("AJAX Error:", status, error);
                 row.find('.editable-cell').text(originalName);
-                row.find('[scope="row"]').next().text(originalSalary); // 恢复原始值
+                row.find('td:nth-child(2)').text(originalSalary); // 恢复原始值
                 alert('更新职位信息时发生错误。');
               }
             });
           } else {
             row.find('.editable-cell').text(originalName);
-            row.find('[scope="row"]').next().text(originalSalary);
+            row.find('td:nth-child(2)').text(originalSalary);
           }
         }).keydown(function(event){
           if (event.which === 13) { // Enter键
             $(this).blur();
           } else if (event.which === 27) { // Esc键
             row.find('.editable-cell').text(originalName);
-            row.find('[scope="row"]').next().text(originalSalary);
+            row.find('td:nth-child(2)').text(originalSalary);
             $(this).blur();
           }
         });
@@ -199,7 +200,7 @@
         $.ajax({
           url: '{% url "basicinfor:position_management" %}',
           type: 'POST',
-          data: formData,
+          data: formData + '&action=add',
           headers: { 'X-CSRFToken': '{{ csrf_token }}' },
           success: function(response) {
             if (response.status === 'success') {

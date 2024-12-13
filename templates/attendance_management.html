@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业工资管理系统 - 考勤管理</title>
+    <!-- 引入 Bootstrap -->
+    <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+    <style>
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* 表头样式 */
+        table thead {
+            background-color: black !important;
+            color: white !important;
+        }
+
+        table thead th {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        /* 文本框和背景色的统一样式 */
+        .form-control {
+            background-color: #f8f9fa;  /* 浅灰色背景 */
+            color: #495057;  /* 深灰色文本 */
+            border: 1px solid #ced4da;  /* 边框颜色 */
+        }
+
+        .form-control:focus {
+            background-color: #fff;  /* 聚焦时背景变白 */
+            border-color: #80bdff;  /* 聚焦时边框颜色 */
+            box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, 0.25);  /* 聚焦时的阴影 */
+        }
+
+        /* 标签背景黑色，文字白色 */
+        .form-label {
+            background-color: black;
+            color: white;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        /* 表格细节 */
+        table {
+            margin-top: 20px;
+        }
+
+        table td, table th {
+            vertical-align: middle;
+            text-align: center;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+</head>
+<body>
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    <!-- 导航栏 -->
+    <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <a href="/" class="navbar-brand">企业工资管理系统 - 日常事务管理</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a href="{% url 'datemanage:attendance_management' %}" class="nav-link active">考勤管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'datemanage:performance_evaluation_management' %}" class="nav-link">绩效考核管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'datemanage:employee_bonus_management' %}" class="nav-link active">奖金管理</a>
+                     </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- 页面内容 -->
+    <main class="container mt-5">
+        <h1 class="mb-4">考勤管理</h1>
+
+        <!-- 添加考勤按钮 -->
+        <button id="addAttendanceButton" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addAttendanceModal">添加考勤记录</button>
+
+        <!-- 模态框 -->
+        <div class="modal fade" id="addAttendanceModal" tabindex="-1" aria-labelledby="addAttendanceModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addAttendanceModalLabel">添加考勤记录</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addAttendanceForm">
+                            <div class="mb-3">
+                                <label for="employeeid" class="form-label">员工ID:</label>
+                                <input type="text" class="form-control" id="employeeid" name="employeeid" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="date" class="form-label">日期:</label>
+                                <input type="date" class="form-control" id="date" name="date" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="clockin_time" class="form-label">上班时间:</label>
+                                <input type="time" class="form-control" id="clockin_time" name="clockin_time" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="clockout_time" class="form-label">下班时间:</label>
+                                <input type="time" class="form-control" id="clockout_time" name="clockout_time" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">添加考勤记录</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
+        <h2>考勤记录</h2>
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col">员工姓名</th>
+                    <th scope="col">员工ID</th>
+                    <th scope="col">日期</th>
+                    <th scope="col">上班时间</th>
+                    <th scope="col">下班时间</th>
+                    <th scope="col">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attendance in attendances %}
+                <tr data-id="{{ attendance.id }}">
+                    <td>{{ attendance.employeeid.name }}</td>
+                    <td>{{ attendance.employeeid.employeeid }}</td>
+                    <td>{{ attendance.date }}</td>
+                    <td>{{ attendance.clockintime }}</td>
+                    <td>{{ attendance.clockouttime }}</td>
+                    <td>
+                        <button type="button" class="delete-btn btn btn-sm btn-danger">删除</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">没有找到考勤记录。</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            // 监听模态框表单的提交
+            document.getElementById('addAttendanceForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const data = new FormData(this);
+
+                fetch('{% url "datemanage:attendance_management" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: data
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        $('#addAttendanceModal').modal('hide');  // 隐藏模态框
+                        location.reload();  // 刷新页面以显示新的考勤记录
+                        showNotification('考勤记录添加成功！');
+                    } else {
+                        showNotification('添加考勤记录时出错：' + JSON.stringify(data.errors));
+                    }
+                })
+                .catch(error => {
+                    console.error("AJAX Error:", error);
+                    showNotification('添加考勤记录时发生错误。');
+                });
+            });
+
+            // 删除考勤记录
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.classList.contains('delete-btn')) {
+                    const button = e.target;
+                    const row = button.closest('tr');
+                    const confirmDelete = confirm("确定要删除此考勤记录吗？");
+
+                    if (confirmDelete) {
+                        fetch('{% url "datemanage:attendance_management" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: new URLSearchParams({
+                                'action': 'delete',
+                                'record_id': row.getAttribute('data-id'),
+                                'csrfmiddlewaretoken': csrfToken
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                row.remove();
+                                showNotification('删除成功！');
+                            } else {
+                                showNotification('删除考勤记录时出错：' + JSON.stringify(data.errors));
+                            }
+                        })
+                        .catch(error => {
+                            console.error("AJAX Error:", error);
+                            showNotification('删除考勤记录时发生错误。');
+                        });
+                    }
+                }
+            });
+
+            // 显示通知的方法
+            function showNotification(message) {
+                const notification = document.createElement('div');
+                notification.className = 'toast';
+                notification.textContent = message;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.opacity = 0;
+                    setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
+                }, 3000); // 3秒后自动关闭通知
+            }
+        });
+    </script>
+</body>
+</html>

@@ -89,7 +89,7 @@ def position_management(request):
         if action == 'delete':  # 删除操作
             positionname = request.POST.get('positionname')
             if not positionname:
-                return JsonResponse({'status': 'error', 'errors': 'Position name is required for deletion.'},
+                return JsonResponse({'status': 'error', 'errors': {'positionname': ['Position name is required for deletion.']}},
                                     status=400)
 
             try:
@@ -100,32 +100,41 @@ def position_management(request):
                 logger.error(f"An error occurred during position deletion: {e}")
                 return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
 
-        else:  # 添加或更新操作
+        elif action == 'update':  # 更新操作
+            original_positionname = request.POST.get('original_positionname')
+            new_positionname = request.POST.get('new_name')
+            basesalary = request.POST.get('new_salary')
+
+            if not original_positionname:
+                return JsonResponse({'status': 'error', 'errors': {'original_positionname': ['Original position name is required for update.']}},
+                                    status=400)
+
+            try:
+                position = get_object_or_404(Positiontable, positionname=original_positionname)
+
+                # 更新提供的非空字段
+                if new_positionname:
+                    position.positionname = new_positionname
+                if basesalary is not None and basesalary.strip():
+                    position.basesalary = float(basesalary)
+
+                position.save()
+                return JsonResponse({'status': 'success'})
+            except Exception as e:
+                logger.error(f"An error occurred during position update: {e}")
+                return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
+
+        else:  # 添加操作
             form = PositionForm(request.POST)
 
             if not form.is_valid():
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
             try:
-                if action == 'update':  # 更新操作
-                    positionname = form.cleaned_data.get('positionname')
-                    basesalary = form.cleaned_data.get('basesalary')
-
-                    position = get_object_or_404(Positiontable, positionname=positionname)
-                    # 只更新提供的非空字段
-                    if basesalary is not None:
-                        position.basesalary = basesalary
-
-                    position.save()
-                    return JsonResponse({'status': 'success'})
-
-                else:  # 添加操作
-                    # 检查所有字段是否都有值（假设PositionForm已经做了这个检查）
-                    new_position = form.save()  # 使用form保存新的职位信息
-                    return JsonResponse({'status': 'success', 'new_position_name': new_position.positionname})
-
+                new_position = form.save()  # 使用form保存新的职位信息
+                return JsonResponse({'status': 'success', 'new_position_name': new_position.positionname})
             except Exception as e:
-                logger.error(f"An error occurred during position management: {e}")
+                logger.error(f"An error occurred during position addition: {e}")
                 return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
 
     else:
@@ -174,7 +183,27 @@ def employee_position_management(request):
             logger.error(f"An error occurred during employee position management: {e}")
             return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
 
+
     else:  # GET request
+
         employees = Employeetable.objects.all()
-        context = {'employees': employees, 'form': EmployeePositionForm(), 'view_type': 'positions'}
+
+        employee_positions = Employeepositiontable.objects.all()  # 查询所有员工职位关联记录
+
+        positions = Positiontable.objects.all()  # 获取所有职位
+
+        context = {
+
+            'employees': employees,
+
+            'employee_positions': employee_positions,
+
+            'positions': positions,  # 包含所有职位
+
+            'form': EmployeePositionForm(),
+
+            'view_type': 'positions'
+
+        }
+
         return render(request, 'employee_position_management.html', context)

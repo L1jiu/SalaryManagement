@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>企业工资管理系统 - 奖金管理</title>
+    <!-- 引入 Bootstrap -->
+    <link href="{% static 'bootstrap5/bootstrap.min.css' %}" rel="stylesheet">
+    <style>
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        table thead {
+            background-color: black !important;
+            color: white !important;
+        }
+
+        table thead th {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        .editable-cell {
+            cursor: pointer;
+        }
+
+        table {
+            margin-top: 20px;
+        }
+
+        table td, table th {
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        /* 添加样式以确保表单与表格风格一致 */
+        form div {
+            margin-bottom: 1rem;
+        }
+
+        form label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        form input[type="text"], form input[type="number"], form input[type="date"], form textarea, form select {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid #ced4da;
+        }
+
+        form button {
+            padding: 0.5rem 1rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+
+        form button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
+</head>
+<body>
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    <!-- 导航栏 -->
+    <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <a href="/" class="navbar-brand">企业工资管理系统</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a href="{% url 'datemanage:attendance_management' %}" class="nav-link">考勤管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'datemanage:performance_evaluation_management' %}" class="nav-link">绩效考核管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'datemanage:employee_bonus_management' %}" class="nav-link active">奖金管理</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="container mt-5">
+        <h1 class="mb-4">奖金管理</h1>
+
+        <!-- 添加和分配奖金表单 -->
+        <form method="post" action="{% url 'datemanage:employee_bonus_management' %}">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div>
+                <label for="id_employee">{{ form.employee.label }}</label>
+                {{ form.employee }}
+                {{ form.employee.errors }}
+            </div>
+            <div>
+                <label for="id_amount">{{ form.amount.label }}</label>
+                {{ form.amount }}
+                {{ form.amount.errors }}
+            </div>
+            <div>
+                <label for="id_paymentdate">{{ form.paymentdate.label }}</label>
+                {{ form.paymentdate }}
+                {{ form.paymentdate.errors }}
+            </div>
+            <div>
+                <label for="id_reason">{{ form.reason.label }}</label>
+                {{ form.reason }}
+                {{ form.reason.errors }}
+            </div>
+            <button type="submit" name="add_and_assign_bonus" class="btn btn-primary">添加并分配奖金</button>
+        </form>
+
+<h2>奖金管理</h2>
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th scope="col">员工姓名</th>
+            <th scope="col">金额</th>
+            <th scope="col">支付日期</th>
+            <th scope="col">原因</th>
+            <th scope="col">员工ID</th>
+            <th scope="col">奖金ID</th>
+            <th scope="col">操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for eb in employee_bonuses %}
+        <tr>
+            <td>{{ eb.employee.name }}</td>
+            <td>{{ eb.amount }}</td>
+            <td>{{ eb.paymentdate }}</td>
+            <td>{{ eb.reason }}</td>
+            <td>{{ eb.employee.employeeid }}</td> <!-- 应该能正确显示 -->
+            <td>{{ eb.bonus.BonusID }}</td>
+            <td>
+                <form method="post" action="{% url 'datemanage:employee_bonus_management' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="employee_id" value="{{ eb.employee.employeeid }}" />
+                    <input type="hidden" name="bonus_id" value="{{ eb.bonus.BonusID }}" />
+                    <button type="submit" name="delete_bonus" onclick="return confirm('确定要删除吗?')" class="btn btn-danger btn-sm">删除</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center">暂无奖金记录。</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        });
+    </script>
+</body>
+</html>
