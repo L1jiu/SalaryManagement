@@ -20,6 +20,7 @@ class Attendancetable(models.Model):
     clockintime = models.TimeField(db_column='ClockInTime', blank=True, null=True)
     clockouttime = models.TimeField(db_column='ClockOutTime', blank=True, null=True)
 
+
     class Meta:
         managed = False
         db_table = 'attendancetable'
@@ -77,6 +78,10 @@ class Workdaytable(models.Model):
     date = models.DateField(db_column='Date', primary_key=True)
     isworkday = models.IntegerField(db_column='IsWorkday')
 
+    def __str__(self):
+        return self.date.strftime('%Y-%m-%d')
+
     class Meta:
         managed = False
         db_table = 'workdaytable'
+

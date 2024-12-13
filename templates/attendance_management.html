@@ -109,7 +109,7 @@
                 <form id="addAttendanceForm" method="post">
                     <!-- CSRF Token for Django -->
                     {% csrf_token %}
-                    
+
                     <div class="mb-3">
                         <label for="employeeid" class="form-label">员工ID:</label>
                         <input type="text" class="form-control" id="employeeid" name="employeeid" required>
@@ -177,7 +177,7 @@ $(document).ready(function() {
     // 添加考勤记录
     $('#addAttendanceForm').on('submit', function(event) {
         event.preventDefault();
-        
+
         $.ajax({
             url: '{% url "datemanage:attendance_management" %}',  // 确保这个URL指向您的视图
             type: 'POST',
