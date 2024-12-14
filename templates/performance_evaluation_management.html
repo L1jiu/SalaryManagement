@@ -52,7 +52,7 @@
     <script src="{% static 'bootstrap5/bootstrap.bundle.min.js' %}"></script>
 </head>
 <body>
-    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <input type="hidden" id="csrfInput" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
     <!-- 导航栏 -->
     <header class="navbar navbar-expand-md navbar-light bg-light mb-4">
@@ -80,11 +80,7 @@
     <!-- 主要内容区 -->
     <main class="container mt-5">
         <h1 class="mb-4">绩效考核管理</h1>
-
-        <!-- 添加记录按钮 -->
-        <button type="button" class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#addPerformanceRecordModal">
-            添加绩效考核记录
-        </button>
+        <button id="addPerformanceRecordButton" class="btn btn-primary mb-3">添加新绩效记录</button>
 
         <!-- 显示绩效考核记录表格 -->
         <form id="performanceEvaluationForm" data-action="manage">
@@ -93,41 +89,30 @@
                     <thead class="table-dark">
                         <tr>
                             <th scope="col">员工姓名</th>
-                            <th scope="col">员工ID</th>
                             <th scope="col">指标名称</th>
                             <th scope="col">得分</th>
                             <th scope="col">考核日期</th>
+                            <th scope="col">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% if performance_records %}
                             {% for record in performance_records %}
-                                <tr data-id="{{ record.id }}">
-                                    <td>{{ record.employee_name }}</td>
-                                    <td>{{ record.employeeid }}</td>
-                                    <td>
-                                        {% with indicator_str=record.indicatorname|stringformat:"s" %}
-                                            {% if 'Performancetable object (团队合作)' == indicator_str %}
-                                                团队合作
-                                            {% elif 'Performancetable object (创新能力)' == indicator_str %}
-                                                创新能力
-                                            {% elif 'Performancetable object (客户满意度)' == indicator_str %}
-                                                客户满意度
-                                            {% elif 'Performancetable object (项目完成度)' == indicator_str %}
-                                                项目完成度
-                                            {% else %}
-                                                {{ indicator_str }}
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                    <td>{{ record.score }}</td>
-                                    <td>{{ record.evaluationdate }}</td>
-                                </tr>
+                                <tr data-employeeid="{{ record.employeeid }}"
+    data-indicatorname="{{ record.indicatorname_id }}"
+    data-evaluationdate="{{ record.evaluationdate|date:'Y-m-d' }}"
+    data-employeename="{{ record.get_employee_name }}"> <!-- 添加员工姓名 -->
+    <td>{{ record.get_employee_name }}</td>
+    <td>{{ record.indicatorname }}</td>
+    <td>{{ record.score }}</td>
+    <td>{{ record.evaluationdate }}</td>
+    <td>
+        <button type="button" class="delete-btn btn btn-sm btn-danger">删除</button>
+    </td>
+</tr>
                             {% endfor %}
                         {% else %}
-                            <tr>
-                                <td colspan="5" class="text-center">暂无数据</td>
-                            </tr>
+                            <tr><td colspan="5">没有找到绩效记录。</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -135,68 +120,141 @@
         </form>
     </main>
 
-    <!-- 添加绩效考核记录的模态框 -->
-    <div class="modal fade" id="addPerformanceRecordModal" tabindex="-1" aria-labelledby="addPerformanceRecordModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addPerformanceRecordModalLabel">添加绩效考核记录</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addPerformanceRecordForm">
-                        {% csrf_token %}
-                        {{ form.as_p }}
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="submitPerformanceRecord">确认添加</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
-        $(document).ready(function() {
-            $('#submitPerformanceRecord').click(function(e) {
-                e.preventDefault();
+$(document).ready(function() {
+    // 获取CSRF Token
+    function getCsrfToken() {
+        return $('#csrfInput').val();
+    }
 
-                var form = $('#addPerformanceRecordForm');
-                var formData = new FormData(form[0]);
+    // 设置所有非GET请求的CSRF头
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type)) {
+                xhr.setRequestHeader("X-CSRFToken", getCsrfToken());
+            }
+        }
+    });
 
-                $.ajax({
-                    url: window.location.href, // 当前页面的URL
-                    type: 'POST',
-                    headers: {'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()},
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            // 动态添加新行到表格中
-                            var newRow = `
-                                <tr data-id="${response.record.employeeid}">
-                                    <td>${response.record.employee_name}</td>
-                                    <td>${response.record.employeeid}</td>
-                                    <td>${response.record.indicatorname}</td>
-                                    <td>${response.record.score}</td>
-                                    <td>${response.record.evaluationdate}</td>
-                                </tr>`;
-                            $('table tbody').append(newRow);
-                            $('#addPerformanceRecordModal').modal('hide'); // 关闭模态框
-                            alert('添加成功！');
-                        } else {
-                            alert('添加失败，请检查输入信息。');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error:', xhr.responseText);
-                        alert('添加过程中出现错误，请检查控制台日志。');
-                    }
+    // 添加新记录
+    $('#addPerformanceRecordButton').click(function() {
+        var newRowHtml = `
+            <tr data-id="new">
+                <td><select class="form-control editable-cell" name="employeeid"></select></td>
+                <td><select class="form-control editable-cell" name="indicatorname"></select></td>
+                <td><input type="text" class="form-control editable-cell" name="score"></td>
+                <td><input type="date" class="form-control editable-cell" name="evaluationdate"></td>
+                <td>
+                    <button type="button" class="save-btn btn btn-sm btn-success">保存</button>
+                    <button type="button" class="cancel-btn btn btn-sm btn-secondary">取消</button>
+                </td>
+            </tr>
+        `;
+        var newRow = $(newRowHtml);
+        $('tbody').prepend(newRow);
+
+        // 填充员工姓名和指标名称下拉列表
+        populateSelect(newRow.find('select[name="employeeid"]'), '{% url "datemanage:employee_list_api" %}');
+        populateSelect(newRow.find('select[name="indicatorname"]'), '{% url "datemanage:indicator_list_api" %}');
+    });
+
+    // 通用函数来填充<select>元素
+    function populateSelect(select, url) {
+        $.ajax({
+            url: url,
+            method: 'GET',
+            success: function(data) {
+                $.each(data, function(index, item) {
+                    $(select).append(
+                        $('<option>', {
+                            value: item.id,
+                            text : item.name || item.indicatorname
+                        })
+                    );
                 });
-            });
+            },
+            error: function(xhr, status, error) {
+                console.error("The request failed: " + status + " Error: " + error);
+            }
         });
-    </script>
+    }
+
+    // 保存新记录
+$(document).on('click', '.save-btn', function() {
+    var row = $(this).closest('tr');
+    var jsonData = {};
+    row.find('.editable-cell').each(function() {
+        var input = $(this).find(':input');
+        jsonData[input.attr('name')] = input.val();
+    });
+
+    $.ajax({
+        url: '{% url "datemanage:performance_evaluation_management" %}',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(jsonData),
+        success: function(response) {
+            if (response.status === 'success') {
+                alert('记录已成功添加！');
+                row.replaceWith(`
+                    <tr data-id="${response.id}">
+                        <td>${jsonData.employeeid}</td>
+                        <td>${jsonData.indicatorname}</td>
+                        <td>${jsonData.score}</td>
+                        <td>${jsonData.evaluationdate}</td>
+                        <td><button type="button" class="delete-btn btn btn-sm btn-danger">删除</button></td>
+                    </tr>
+                `);
+            } else {
+                alert('发生错误: ' + response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("The request failed: " + status + " Error: " + error);
+            alert('请求失败，请重试。');
+        }
+    });
+});
+
+// 删除记录
+$(document).on('click', '.delete-btn', function() {
+    var row = $(this).closest('tr');
+    var employeeName = row.data('employeename'); // 从data-employeename属性中获取员工姓名
+    var indicatorName = row.data('indicatorname'); // 假设为data-indicatorname
+    var evaluationDate = row.data('evaluationdate'); // 假设为data-evaluationdate
+
+    if (!recordId) {
+        alert('无法删除此记录，缺少必要的标识信息。');
+        return;
+    }
+
+    // 确认删除
+    if (confirm('确认要删除该记录吗？')) {
+
+        $.ajax({
+            url: '{% url "datemanage:performance_evaluation_management" %}',
+            type: 'DELETE',
+            data: {
+                'employeename': employeeName, // 使用员工姓名代替employeeid
+                'indicatorname': indicatorName,
+                'evaluationdate': evaluationDate
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    row.remove();
+                    alert('记录已成功删除！');
+                } else {
+                    alert('发生错误: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("The request failed: " + status + " Error: " + error);
+                alert('请求失败，请重试。');
+            }
+        });
+    }
+}); 
+});
+</script>
 </body>
 </html>

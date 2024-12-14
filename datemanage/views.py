@@ -1,13 +1,24 @@
+import json
+
 from django.contrib import messages
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseBadRequest
-from django.views.decorators.csrf import csrf_exempt
-import json
 import logging
+
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
+
 from .forms import BonustableForm, EmployeebonustableForm, AddBonusAndAssignForm, PerformanceevaluationtableForm, \
     AttendancetableForm
-from .models import Employeebonustable, Bonustable, Employeetable
+
+from django.shortcuts import render, redirect
+from django.http import HttpResponseBadRequest
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .serializers import EmployeeSerializer, PerformanceSerializer
 
 
 from .models import (
@@ -16,7 +27,8 @@ from .models import (
     Workdaytable,
     Performanceevaluationtable,
     Employeebonustable,
-    Bonustable
+    Bonustable,
+    Performancetable
 )
 
 
@@ -62,67 +74,136 @@ def attendance_management(request):
 
 
 
+
 def performance_evaluation_management(request):
-    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        form = PerformanceevaluationtableForm(request.POST)
-        if form.is_valid():
+    if request.method == 'POST':
+        try:
+            # 从请求体中解析JSON数据
+            body = json.loads(request.body)
+            employeeid = body.get('employeeid')
+            indicatorname = body.get('indicatorname')
+            score = body.get('score')
+            evaluationdate = body.get('evaluationdate')
+
+            if not all([employeeid, indicatorname, score, evaluationdate]):
+                return JsonResponse({'status': 'error', 'message': '缺少必要的参数'}, status=400)
+
+            Performanceevaluationtable.objects.create(
+                employeeid=employeeid,
+                indicatorname=indicatorname,
+                score=score,
+                evaluationdate=evaluationdate
+            )
+            return JsonResponse({'status': 'success'})
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': '无效的JSON格式'}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    if request.method == 'DELETE':
+
+        try:
+
+            # 从请求体中解析JSON数据
+
+            body = json.loads(request.body)
+
+            employee_name = body.get('employeeName')
+
+            indicator_name = body.get('indicatorName')
+
+            evaluation_date = body.get('evaluationDate')
+
+            # 验证所有必要参数是否都存在
+
+            if not all([employee_name, indicator_name, evaluation_date]):
+                return JsonResponse({'status': 'error', 'message': '缺少必要的参数'}, status=400)
+
+            # 根据员工名字查询employeeid
+
             try:
-                with transaction.atomic():
-                    # 保存新的绩效考核记录
-                    new_record = form.save()
 
-                    # 获取员工姓名并关联到新记录
-                    employee = Employeetable.objects.get(employeeid=new_record.employeeid)
-                    new_record.employee_name = employee.name
+                employee = Employeetable.objects.get(Name=employee_name)
 
-                    logger.info(f"成功添加了绩效考核记录: {new_record}")
-                    return JsonResponse({'status': 'success', 'record': {
-                        'employee_name': new_record.employee_name,
-                        'employeeid': new_record.employeeid,
-                        'indicatorname': new_record.indicatorname.indicatorname,
-                        'score': str(new_record.score),
-                        'evaluationdate': new_record.evaluationdate.strftime('%Y-%m-%d')
-                    }})
-            except Exception as e:
-                logger.error(f"添加绩效考核记录时出错: {e}")
-                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-        else:
-            errors = form.errors.as_json()
-            logger.error(f"表单验证失败: {errors}")
-            return JsonResponse({'status': 'error', 'errors': errors}, status=400)
+            except Employeetable.DoesNotExist:
 
-    try:
-        # 获取所有绩效考核记录
-        performance_records = Performanceevaluationtable.objects.all().select_related('indicatorname')
+                return JsonResponse({'status': 'error', 'message': '找不到对应的员工'}, status=404)
 
-        # 查询每个绩效记录对应的员工姓名
-        for record in performance_records:
-            # 使用外键查询员工姓名
-            employee = Employeetable.objects.get(employeeid=record.employeeid)
-            # 将员工姓名添加到绩效记录中
-            record.employee_name = employee.name
+            # 查询Performancetable以获取IndicatorName的实例
 
-        # 添加日志输出检查数据是否正确
-        logger.info(f"获取到的绩效考核记录: {performance_records}")
+            try:
 
-        # 渲染模板并传递数据
+                indicator = Performancetable.objects.get(IndicatorName=indicator_name)
+
+            except Performancetable.DoesNotExist:
+
+                return JsonResponse({'status': 'error', 'message': '找不到对应的绩效指标'}, status=404)
+
+            # 尝试直接使用传入的日期字符串（假设它已经是正确格式）
+
+            try:
+
+                evaluation_date = timezone.datetime.strptime(evaluation_date, '%Y-%m-%d').date()
+
+            except ValueError:
+
+                return JsonResponse({'status': 'error', 'message': '日期格式错误'}, status=400)
+
+            # 直接查询Performanceevaluationtable并删除记录
+
+            deleted_count, _ = Performanceevaluationtable.objects.filter(
+
+                EmployeeID=employee.employeeid,
+
+                IndicatorName=indicator,  # 使用indicator对象而不是字符串
+
+                EvaluationDate=evaluation_date
+
+            ).delete()
+
+            if deleted_count == 0:
+
+                return JsonResponse({'status': 'error', 'message': '没有找到可删除的记录'}, status=404)
+
+            else:
+
+                return JsonResponse({'status': 'success', 'message': f'成功删除了 {deleted_count} 条记录'})
+
+
+        except json.JSONDecodeError:
+
+            return JsonResponse({'status': 'error', 'message': 'DELETE:无效的JSON格式'}, status=400)
+
+        except Exception as e:
+
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    else:  # GET请求
+        # 获取所有绩效记录并传递给模板
+        performance_records = Performanceevaluationtable.objects.select_related('indicatorname').all()
         context = {
             'performance_records': performance_records,
-            'view_type': 'performance',
-            'form': PerformanceevaluationtableForm()  # 为模态框提供表单
+            'employees': Employeetable.objects.all(),
+            'indicators': Performancetable.objects.all(),
         }
         return render(request, 'performance_evaluation_management.html', context)
 
-    except Exception as e:
-        logger.error(f"绩效考核管理出现错误：{e}")
-        return JsonResponse({'status': 'error', 'errors': str(e)}, status=500)
+
+@api_view(['GET'])
+def employee_list_api(request):
+    employees = Employeetable.objects.all()
+    serializer = EmployeeSerializer(employees, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def performance_list_api(request):
+    performances = Performancetable.objects.all()
+    serializer = PerformanceSerializer(performances, many=True)
+    return Response(serializer.data)
 
 
-from django.shortcuts import render, redirect
-from django.http import HttpResponseBadRequest
-from .models import Bonustable, Employeebonustable
 
-import logging
+
 
 
 def employee_bonus_management(request):

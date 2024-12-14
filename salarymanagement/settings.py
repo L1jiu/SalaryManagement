@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'basicinfor',
     'sshftax',
     'salary',
-    'datemanage'
+    'datemanage',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [

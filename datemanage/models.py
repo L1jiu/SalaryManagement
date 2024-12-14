@@ -47,6 +47,12 @@ class Performanceevaluationtable(models.Model):
     score = models.DecimalField(db_column='Score', max_digits=5, decimal_places=2)
     evaluationdate = models.DateField(db_column='EvaluationDate')
 
+    def get_employee_name(self):
+        try:
+            return Employeetable.objects.get(employeeid=self.employeeid).name
+        except Employeetable.DoesNotExist:
+            return "未知员工"
+
     class Meta:
         managed = False
         db_table = 'performanceevaluationtable'
@@ -56,6 +62,9 @@ class Performanceevaluationtable(models.Model):
 class Performancetable(models.Model):
     indicatorname = models.CharField(db_column='IndicatorName', primary_key=True, max_length=100)
     weight = models.DecimalField(db_column='Weight', max_digits=5, decimal_places=2)
+
+    def __str__(self):
+        return self.indicatorname
 
     class Meta:
         managed = False

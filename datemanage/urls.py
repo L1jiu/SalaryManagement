@@ -17,4 +17,7 @@ urlpatterns = [
 
     # 员工奖金管理路由
     path('employee_bonus_management/', views.employee_bonus_management, name='employee_bonus_management'),
+
+    path('api/employees/', views.employee_list_api, name='employee_list_api'),
+    path('api/indicators/', views.performance_list_api, name='indicator_list_api'),
 ]
