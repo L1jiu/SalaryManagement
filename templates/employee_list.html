@@ -69,7 +69,6 @@
 <body>
     <div class="button-container">
         <a href="http://localhost:8000/" class="home-btn">主页</a>
-
     </div>
     <h1>员工列表</h1>
     <table>
@@ -84,7 +83,7 @@
             {% for employee in employees %}
             <tr>
                 <td><a href="{% url 'sshftax:employee_details' employee.employeeid %}">{{ employee.name }}</a></td>
-                <td>{{ employee.gender }}</td>
+                <td>{% if employee.gender == "Male" %}男{% elif employee.gender == "Female" %}女{% else %}未知{% endif %}</td>
                 <td>{{ employee.phonenumber }}</td>
             </tr>
             {% endfor %}
