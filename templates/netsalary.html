@@ -61,7 +61,7 @@
       <div class="input-group">
         <input type="month" id="year_month" name="year_month" value="{{ selected_year_month|default_if_none:'2024-01' }}" class="form-control">
         <button type="submit" name="action" value="query" class="btn btn-primary">查询</button>
-        <button type="button" onclick="calculateAndDisplay()" class="btn btn-success">重新计算并展示当月工资</button>
+        
       </div>
     </form>
 
@@ -191,18 +191,22 @@
       showLoadingSpinner(true); // 显示加载指示器
 
       fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        updatePageContent(data);
-        showLoadingSpinner(false); // 隐藏加载指示器
-        showToast(`已成功重新计算 ${data.selected_year_month} 的工资。`);
-      })
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.message) {
+      showToast(data.message);
+    } else {
+      updatePageContent(data);
+      showToast(`已成功重新计算 ${data.selected_year_month} 的工资。`);
+    }
+    showLoadingSpinner(false); // 隐藏加载指示器
+  })
       .catch(error => {
         console.error('Error:', error);
         showLoadingSpinner(false); // 隐藏加载指示器
@@ -252,28 +256,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-      // 初始化页面内容
-      updatePageContent({
-        salaries: JSON.parse('{{ salaries|safe }}'),
-        selected_year_month: "{{ selected_year_month_display }}",
-        avg_netsalary: "{{ avg_netsalary }}",
-        max_netsalary: "{{ max_netsalary }}", // 确保这些变量已经在视图中定义
-        min_netsalary: "{{ min_netsalary }}",
-        total_netsalary: "{{ total_netsalary }}",
-        employee_count: "{{ employee_count }}",
-        avg_basesalary: "{{ avg_basesalary }}"
-      });
+    // 初始化页面内容
+    const initialData = JSON.parse('{{ initial_data|safe }}'); // 确保视图函数提供了这个变量
 
-      // 显示Bootstrap Toast通知
-      {% if messages %}
+    updatePageContent(initialData);
+
+    // 显示Bootstrap Toast通知
+    {% if messages %}
         {% for message in messages %}
-          showToast('{{ message|escapejs }}');
+            showToast('{{ message|escapejs }}');
         {% endfor %}
-      {% endif %}
+    {% endif %}
 
-      // 隐藏加载指示器（如果页面加载完成时不需要显示）
-      showLoadingSpinner(false);
-    });
+    // 隐藏加载指示器（如果页面加载完成时不需要显示）
+    showLoadingSpinner(false);
+});
   </script>
 </body>
 </html>

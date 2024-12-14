@@ -64,6 +64,7 @@
           {% endfor %}
         </select>
         <button type="submit" class="btn btn-primary">查询</button>
+      <button type="button" class="btn btn-success">计算净工资</button>
       </div>
     </form>
 
@@ -103,79 +104,153 @@
 
   <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const ctx = document.getElementById('salary-chart').getContext('2d');
+    const ctx = document.getElementById('salary-chart').getContext('2d');
+    document.querySelector('.btn-success').addEventListener('click', calculateAndDisplay);
 
-  // 准备图表数据
-  let chartType, chartLabels, datasets;
+    // 准备图表数据
+    let chartType, chartLabels, datasets;
 
-  if ('{{ selected_month }}') { // 如果选择了具体月份，则准备柱状图数据
-    chartType = 'bar';
-    const parsedData = JSON.parse('{{ chart_data|safe }}');
-    datasets = [{
-      label: '工资',
-      data: parsedData.map(item => item.data[0]), // 单个月份的数据
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      borderColor: 'rgba(75, 192, 192, 1)',
-      borderWidth: 1
-    }];
-    chartLabels = parsedData.map(item => item.label); // 员工名字作为标签
-  } else { // 如果没有选择具体月份，则准备年度折线图数据
-    chartType = 'line';
-    chartLabels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    
-    // 解析chart_data，创建多个dataset，每条线代表一个员工
-    datasets = JSON.parse('{{ chart_data|safe }}').map(item => ({
-      label: item.label,
-      data: item.data,
-      borderColor: getRandomColor(), // 为不同员工设置不同的颜色
-      fill: false,
-      borderWidth: 2
-    }));
-  }
+    if ('{{ selected_month }}') { // 如果选择了具体月份，则准备柱状图数据
+        chartType = 'bar';
+        const parsedData = JSON.parse('{{ chart_data|safe }}');
+        datasets = [{
+            label: '工资',
+            data: parsedData.map(item => item.data[0]), // 单个月份的数据
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }];
+        chartLabels = parsedData.map(item => item.label); // 员工名字作为标签
+    } else { // 如果没有选择具体月份，则准备年度折线图数据
+        chartType = 'line';
+        chartLabels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        
+        // 解析chart_data，创建多个dataset，每条线代表一个员工
+        datasets = JSON.parse('{{ chart_data|safe }}').map(item => ({
+            label: item.label,
+            data: item.data,
+            borderColor: getRandomColor(), // 为不同员工设置不同的颜色
+            fill: false,
+            borderWidth: 2
+        }));
+    }
 
-  // 只有当所有必要的变量都被定义并且datasets非空时才创建图表
-  if (chartType && chartLabels.length && datasets.length) {
-    new Chart(ctx, {
-      type: chartType,
-      data: {
-        labels: chartLabels,
-        datasets: datasets
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
+    // 只有当所有必要的变量都被定义并且datasets非空时才创建图表
+    if (chartType && chartLabels.length && datasets.length) {
+        new Chart(ctx, {
+            type: chartType,
+            data: {
+                labels: chartLabels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // 定义显示加载指示器的函数
+    function showLoadingSpinner(show) {
+        const spinner = document.querySelector('.loading-spinner'); // 确保你的HTML中有这个元素
+        if (spinner) {
+            spinner.style.display = show ? 'block' : 'none';
         }
-      }
+    }
+
+    // 定义显示通知的方法
+    function showToast(message) {
+        const notification = document.createElement('div');
+        notification.className = 'toast';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
+        }, 3000); // 3秒后自动关闭通知
+    }
+
+    // 定义更新页面内容的方法
+    function updatePageContent(data) {
+        // 这里根据返回的数据更新页面内容
+        // 例如：刷新表格、重新绘制图表等
+        console.log('Updating page content with:', data);
+        // 实际实现将取决于你如何处理从服务器接收到的数据
+    }
+
+    // 计算净工资的函数
+    function calculateAndDisplay(event) {
+    event.preventDefault(); // 阻止表单的默认提交行为
+
+    const yearSelect = document.querySelector('select[name="year"]');
+    const monthSelect = document.querySelector('select[name="month"]');
+
+    if (!yearSelect || !monthSelect) {
+        alert("无法找到年份或月份选择器");
+        return;
+    }
+
+    const year = yearSelect.value.trim();
+    const month = monthSelect.value.trim();
+
+    if (!year || !month) {
+        alert("请选择年份和月份");
+        return;
+    }
+
+    // 创建标准化的 yearMonth 字符串，例如 "2024-12" 或 "2024_12"
+    const yearMonth = `${year}-${month.padStart(2, '0')}`; // 使用连字符
+    // 或者
+    // const yearMonth = `${year}_${month.padStart(2, '0')}`; // 使用下划线
+
+    console.log('Year-Month:', yearMonth);
+
+    const url = '{% url "salary:netsalary" %}';
+    const formData = new FormData();
+    formData.append('year_month', yearMonth);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    showLoadingSpinner(true); // 显示加载指示器
+
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            showToast(data.message);
+        } else {
+            updatePageContent(data);
+            showToast(`已成功重新计算 ${data.selected_year_month} 的工资。`);
+        }
+        showLoadingSpinner(false); // 隐藏加载指示器
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showLoadingSpinner(false); // 隐藏加载指示器
     });
-  }
+}
 
-  // 辅助函数：生成随机颜色用于折线图的不同线条
-  function getRandomColor() {
-    return '#' + Math.floor(Math.random()*16777215).toString(16);
-  }
+    // 辅助函数：生成随机颜色用于折线图的不同线条
+    function getRandomColor() {
+        return '#' + Math.floor(Math.random()*16777215).toString(16);
+    }
 
-  // 显示通知的方法
-  function showNotification(message) {
-    const notification = document.createElement('div');
-    notification.className = 'toast';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => notification.remove(), 500); // 等待动画结束再移除
-    }, 3000); // 3秒后自动关闭通知
-  }
-
-  // 处理表单提交后的通知（如果有）
-  {% if messages %}
-    {% for message in messages %}
-      showNotification('{{ message }}');
-    {% endfor %}
-  {% endif %}
+    // 显示通知的方法（如果有）
+    {% if messages %}
+        {% for message in messages %}
+            showToast('{{ message }}');
+        {% endfor %}
+    {% endif %}
 });
 </script>
 </body>

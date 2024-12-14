@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .models import Grosssalary, Employeetable, Positiontable
 import json
-from django.db import connection
+from django.db import connection, connections, DatabaseError
 from .models import get_salary_view_model
 from django.utils import timezone
 from django.db.models import Avg, Max, Min, Sum, Count
@@ -24,9 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def grosssalary(request):
-    # 获取所有不同的年份和月份，基于 year 和 month 字段
+    # 获取所有不同的年份
     years = Grosssalary.objects.values_list('year', flat=True).distinct().order_by('-year')
-    months = [f'{i}月' for i in range(1, 13)]  # 构造中文月份列表
+
+    # 构造数字月份列表，而非中文月份
+    months = [str(i).zfill(2) for i in range(1, 13)]  # ['01', '02', ..., '12']
 
     selected_year = request.GET.get('year')
     selected_month_str = request.GET.get('month')
@@ -35,13 +37,10 @@ def grosssalary(request):
     if selected_year:
         filter_query['year'] = int(selected_year)
 
-    selected_month = None
-    if selected_month_str:
-        try:
-            selected_month = int(selected_month_str.split('月')[0])  # 将月份转换为整数
+    if selected_month_str and selected_month_str.isdigit():
+        selected_month = int(selected_month_str)
+        if 1 <= selected_month <= 12:
             filter_query['month'] = selected_month
-        except (ValueError, AttributeError):
-            pass  # 如果转换失败，忽略错误并继续
 
     salaries = (Grosssalary.objects.filter(**filter_query)
                 .annotate(
@@ -60,7 +59,7 @@ def grosssalary(request):
     # 准备用于图表的数据
     chart_data = {}
 
-    if not selected_month:  # 只有在不是单个月份查询时才生成折线图数据
+    if not selected_month_str:  # 只有在不是单个月份查询时才生成折线图数据
         for salary in salaries:
             employee_id = salary.employeeid.employeeid
             if employee_id not in chart_data:
@@ -79,7 +78,7 @@ def grosssalary(request):
                     'data': [float(salary.total_gross_salary or 0)]  # 单个月份的数据
                 }
 
-    chart_json = json.dumps(list(chart_data.values()))
+    chart_json = json.dumps(list(chart_data.values()), cls=DjangoJSONEncoder)
 
     context = {
         'years': years,
@@ -97,7 +96,7 @@ def get_chart_data(salaries):
     data = []  # 图表Y轴数据，这里使用净工资数值
 
     for salary in salaries:
-        labels.append(salary.name)
+        labels.append(salary.employeeid.name)
         data.append(float(salary.netsalary))  # 确保转换为float类型以避免JSON序列化问题
 
     chart_data = {
@@ -204,7 +203,6 @@ def netsalary(request):
     }
 
     return render(request, 'netsalary.html', context)
-
 
 FIELD_NAME_MAP = {
     'id': 'ID',
